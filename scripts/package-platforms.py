@@ -33,6 +33,15 @@ def extract_binary(path, name):
         return archive.extractfile(member).read()
 
 
+def copy_verified(dist, destination, name, sums):
+    source = dist / name
+    if digest(source) != sums.get(name):
+        raise ValueError(f"archive checksum mismatch for {name}")
+    target = destination / name
+    shutil.copyfile(source, target)
+    return target
+
+
 def add_member(archive, name, data, mode):
     info = tarfile.TarInfo("package/" + name)
     info.mode = mode
@@ -68,17 +77,13 @@ def package(dist, version, destination):
     destination.mkdir(parents=True, exist_ok=True)
     files = []
     packages = {}
+    cleaners = {}
     license_text = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
     for go_os, platform in PLATFORMS.items():
         for go_arch, arch in ARCHITECTURES.items():
             extension, executable = ("zip", "beam.exe") if go_os == "windows" else ("tar.gz", "beam")
             name = f"beam_{version}_{go_os}_{go_arch}.{extension}"
-            original = dist / name
-            if digest(original) != checksums.get(name):
-                raise ValueError(f"archive checksum mismatch for {name}")
-            native = destination / name
-            with original.open("rb") as src, native.open("wb") as dst:
-                shutil.copyfileobj(src, dst)
+            native = copy_verified(dist, destination, name, checksums)
             wrapper = destination / f"beam-npm-{platform}-{arch}-{version}.tgz"
             binary = extract_binary(native, executable)
             wrap(wrapper, version, platform, arch, executable, binary, license_text)
@@ -93,9 +98,22 @@ def package(dist, version, destination):
                 "executable": "bin/" + executable,
                 "executableSha256": hashlib.sha256(binary).hexdigest(),
             }
+            cleaner_name = f"beam-clean_{version}_{go_os}_{go_arch}.gz"
+            cleaner = copy_verified(dist, destination, cleaner_name, checksums)
+            plain = gzip.decompress(cleaner.read_bytes())
+            cleaners[f"{platform}-{arch}"] = {
+                "archive": cleaner_name, "bytes": cleaner.stat().st_size,
+                "sha256": checksums[cleaner_name], "executableBytes": len(plain),
+                "executableSha256": hashlib.sha256(plain).hexdigest(),
+            }
+            files.append(cleaner)
+            print(f"{cleaner.name}: {cleaner.stat().st_size} compressed bytes, {len(plain)} executable bytes")
     manifest = destination / "platforms.json"
     manifest.write_text(json.dumps({"version": version, "platforms": packages}, indent=2) + "\n")
     files.append(manifest)
+    cleaner_manifest = destination / "cleaners.json"
+    cleaner_manifest.write_text(json.dumps({"version": version, "protocol": 1, "platforms": cleaners}, indent=2) + "\n")
+    files.append(cleaner_manifest)
     sums = "".join(f"{digest(path)}  {path.name}\n" for path in sorted(files))
     (destination / "SHA256SUMS").write_text(sums)
 
