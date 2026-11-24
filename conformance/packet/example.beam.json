@@ -1,0 +1,1 @@
+{"version":2,"beamId":"38a004e5465e517b0b3122f3100fed94","source":"codex","title":"CSV importer","updatedAt":"2024-02-29T01:02:03Z","completed":false,"items":[{"type":"userMessage","text":"Keep quoted newlines inside a cell.","speaker":"p1"},{"type":"agentMessage","text":"The Windows test is still missing."}]}
