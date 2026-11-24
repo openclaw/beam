@@ -16,6 +16,8 @@ func (f adapterFunc) Call(c context.Context, r Request) (any, error) { return f(
 
 func TestClosedRequest(t *testing.T) {
 	input := []string{
+		`{"protocol":1,"protocol":1,"request":{"op":"capabilities"}}`,
+		`{"Protocol":1,"request":{"op":"capabilities"}}`,
 		`{"protocol":1,"request":{"op":"capabilities","handle":"extra"}}`,
 		`{"protocol":3,"request":{"op":"capabilities"}}`,
 		`{"protocol":1,"request":{"op":"read","selection":"a","limit":201}}`,

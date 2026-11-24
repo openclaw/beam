@@ -79,6 +79,12 @@ func EncodeRequest(r Request) ([]byte, error) {
 }
 
 func DecodeRequest(data []byte) (Request, error) {
+	if err := checkWire(data); err != nil {
+		return Request{}, err
+	}
+	if _, err := members(data, "protocol", "request"); err != nil {
+		return Request{}, err
+	}
 	var env requestEnvelope
 	if err := decode(data, &env); err != nil {
 		return Request{}, err
@@ -169,6 +175,16 @@ func Serve(ctx context.Context, a Adapter, in io.Reader, out io.Writer) (int, er
 }
 
 func DecodeResult(data []byte, op string) (any, error) {
+	if err := checkWire(data); err != nil {
+		return nil, err
+	}
+	keys, err := members(data, "protocol", "ok", "result", "error")
+	if err != nil {
+		return nil, err
+	}
+	if string(keys["ok"]) != "true" && string(keys["ok"]) != "false" {
+		return nil, fmt.Errorf("machine receipt requires boolean ok")
+	}
 	var env Envelope
 	if err := decode(data, &env); err != nil {
 		return nil, fmt.Errorf("invalid adapter response: %w", err)
