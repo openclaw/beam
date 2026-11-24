@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Installed Beam skill request 1",
+  "description": "Private process input for the released v1 sender interface. Probe with beam skill-v1 --protocol. Write one request to beam skill-v1 stdin. Success writes the legacy receiver or gateway receipt. Failure writes a diagnostic on stderr and exits nonzero. Never redispatch a failed mutation to another writer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation", "endpoint", "beamId"],
+  "properties": {
+    "operation": { "enum": ["share", "handoff", "read", "continue"] },
+    "endpoint": { "type": "string", "format": "uri" },
+    "beamId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "packet": {
+      "description": "Exact cleaned v1 JSON text for a new publication. Omit on handoff retry by ID. The journal owns the release generation.",
+      "type": "string",
+      "minLength": 1,
+      "contentMediaType": "application/json",
+      "contentSchema": {
+        "allOf": [
+          { "$ref": "packet-v1.schema.json" },
+          { "not": { "required": ["handoffId"] } }
+        ]
+      }
+    },
+    "state": { "type": "string" },
+    "hook": { "type": "boolean" },
+    "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+    "snapshotFallback": { "type": "boolean" },
+    "profileDir": { "type": "string" },
+    "agent": { "type": "string" },
+    "cli": { "type": "string" },
+    "message": { "type": "string", "minLength": 1, "maxLength": 32000 },
+    "requestId": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,128}$" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "share" } } },
+      "then": { "required": ["packet"] },
+      "else": { "properties": { "hook": { "const": false } } }
+    },
+    {
+      "if": { "properties": { "operation": { "enum": ["read", "continue"] } } },
+      "then": { "required": ["profileDir"], "properties": { "packet": false } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "continue" } } },
+      "then": { "required": ["message", "requestId"] }
+    },
+    {
+      "if": { "properties": { "operation": { "enum": ["share", "read", "continue"] } } },
+      "then": { "properties": { "snapshotFallback": { "const": false } } }
+    }
+  ]
+}
