@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -24,8 +23,8 @@ func TestOpenClawPublishReleaseRestart(t *testing.T) {
 	g := newGateway(t, c, model.URL)
 	g.enableBeam(t)
 	g.start(t)
-	var drop atomic.Bool
-	a := g.proxy(t, "publisher@example.test", "192.0.2.10", &drop)
+	var receipts gatewayReceipts
+	a := g.proxy(t, "publisher@example.test", "192.0.2.10", &receipts)
 	b := g.proxy(t, "teammate@example.test", "192.0.2.11", nil)
 	packet := c.reviewed(t)
 	file := filepath.Join(c.dir, "reviewed.beam.json")
@@ -64,9 +63,9 @@ func TestOpenClawPublishReleaseRestart(t *testing.T) {
 	if res.StatusCode != http.StatusForbidden && res.StatusCode != http.StatusNotFound {
 		t.Fatalf("second person's release returned %d", res.StatusCode)
 	}
-	drop.Store(true)
+	receipts.dropRelease.Store(true)
 	_, _, _ = c.command(t, nil, "handoff", file, "--to", a.URL, "--state", db, "--json")
-	if drop.Load() {
+	if receipts.dropRelease.Load() {
 		t.Fatal("did not reach a committed release response")
 	}
 	c.run(t, nil, "handoff", file, "--to", a.URL, "--state", db, "--json")
@@ -85,9 +84,22 @@ func TestOpenClawPublishReleaseRestart(t *testing.T) {
 	if dest.State != "released_unbound" || len(models.seen()) != 0 {
 		t.Fatalf("release or read created a turn or destination: %+v", dest)
 	}
-	args := []string{"continue", a.URL + machinePath, "--endpoint", a.URL, "--state", db, "--message", "Answer the synthetic fixture question", "--request-id", "10000000-0000-4000-8000-000000000002", "--json"}
-	c.run(t, nil, args...)
-	c.run(t, nil, args...)
+	const requestID = "10000000-0000-4000-8000-000000000002"
+	args := []string{"continue", a.URL + machinePath, "--endpoint", a.URL, "--state", db, "--message", "Answer the synthetic fixture question", "--request-id", requestID, "--json"}
+	receipts.dropContinuation.Store(true)
+	if _, _, err := c.command(t, nil, args...); err == nil || receipts.dropContinuation.Load() {
+		t.Fatal("expected an unreadable outward receipt after the Gateway accepted the continuation")
+	}
+	for range 2 {
+		var receipt struct{ RequestID, State string }
+		machineResult(t, c.run(t, nil, args...), &receipt)
+		if receipt.RequestID != requestID || (receipt.State != "accepted" && receipt.State != "completed") {
+			t.Fatalf("same-UUID recovery returned an unexpected receipt: %+v", receipt)
+		}
+	}
+	if receipts.sendPosts.Load() != 1 || receipts.statusReads.Load() != 2 {
+		t.Fatalf("expected one continuation POST and two receipt GETs, got %d and %d", receipts.sendPosts.Load(), receipts.statusReads.Load())
+	}
 	wait, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	for len(models.seen()) == 0 && wait.Err() == nil {

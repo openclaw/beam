@@ -165,7 +165,14 @@ func (g *gateway) stop() {
 	g.cmd = nil
 }
 
-func (g *gateway) proxy(t *testing.T, person, clientIP string, dropRelease *atomic.Bool) *httptest.Server {
+type gatewayReceipts struct {
+	dropRelease      atomic.Bool
+	dropContinuation atomic.Bool
+	sendPosts        atomic.Int32
+	statusReads      atomic.Int32
+}
+
+func (g *gateway) proxy(t *testing.T, person, clientIP string, receipts *gatewayReceipts) *httptest.Server {
 	t.Helper()
 	origin := &url.URL{Scheme: "http", Host: "127.0.0.1:" + g.port}
 	p := &httputil.ReverseProxy{Rewrite: func(r *httputil.ProxyRequest) {
@@ -192,9 +199,30 @@ func (g *gateway) proxy(t *testing.T, person, clientIP string, dropRelease *atom
 			_ = json.Unmarshal(prefix, &reply)
 			t.Logf("Gateway %s %s returned %d (%s, %.250s)", r.Request.Method, r.Request.URL.Path, r.StatusCode, reply.Error.Code, reply.Error.Message)
 		}
-		if dropRelease != nil && r.StatusCode/100 == 2 && r.Request.Method == "POST" && strings.HasSuffix(r.Request.URL.Path, "/release") && dropRelease.CompareAndSwap(true, false) {
-			_, _ = io.Copy(io.Discard, r.Body)
-			return errors.New("fixture dropped committed release acknowledgement")
+		if receipts != nil && r.StatusCode/100 == 2 {
+			path := r.Request.URL.Path
+			switch {
+			case r.Request.Method == "GET" && strings.Contains(path, "/requests/"):
+				receipts.statusReads.Add(1)
+			case r.Request.Method == "POST" && strings.HasSuffix(path, "/release") && receipts.dropRelease.CompareAndSwap(true, false):
+				_, _ = io.Copy(io.Discard, r.Body)
+				return errors.New("fixture dropped committed release acknowledgement")
+			case r.Request.Method == "POST" && strings.HasSuffix(path, "/continue"):
+				receipts.sendPosts.Add(1)
+				if receipts.dropContinuation.CompareAndSwap(true, false) {
+					// The Gateway has returned its complete receipt. Truncate only the
+					// caller's copy after headers so a transport cannot retry the POST.
+					n, err := io.Copy(io.Discard, r.Body)
+					r.Body.Close()
+					if err != nil || n < 2 {
+						t.Errorf("expected a complete upstream continuation receipt: bytes=%d, err=%v", n, err)
+					}
+					r.Body = io.NopCloser(strings.NewReader("{"))
+					r.ContentLength = n
+					r.Header.Set("Content-Length", fmt.Sprint(n))
+					r.TransferEncoding = nil
+				}
+			}
 		}
 		return nil
 	}
