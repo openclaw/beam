@@ -1,13 +1,10 @@
 package localhistory
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
-	"os"
-	"os/exec"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/openclaw/beam/internal/adapter"
@@ -46,11 +43,11 @@ func (r Reader) Call(ctx context.Context, q adapter.Request) (any, error) {
 		for _, f := range files {
 			entries = append(entries, adapter.Entry{Selection: f.ID, Title: f.Title})
 		}
-		start, end, next, err := Page(r.Name+r.SourceHome, entries, len(entries), q.Cursor, q.Limit)
+		w, err := page(r.Name+r.SourceHome, entries, len(entries), q.Cursor, q.Limit)
 		if err != nil {
 			return nil, pageError(err)
 		}
-		return adapter.ListResult{Entries: entries[start:end], NextCursor: next}, nil
+		return adapter.ListResult{Entries: entries[w.start:w.end], NextCursor: w.next()}, nil
 	}
 	for _, f := range files {
 		if f.ID != id {
@@ -71,18 +68,36 @@ func (r Reader) Call(ctx context.Context, q adapter.Request) (any, error) {
 		if h.Partial {
 			c.Completeness = "partial"
 		}
-		start, end, next, err := Page(r.Name+r.SourceHome+q.Selection, h, len(h.Items), q.Cursor, q.Limit)
+		w, err := page(r.Name+r.SourceHome+q.Selection, h, len(h.Items), q.Cursor, q.Limit)
 		if err != nil {
 			return nil, pageError(err)
 		}
 		if len(h.Items) == 0 {
 			return nil, errors.New("selected session contains no shareable messages")
 		}
-		c.Items = make([]clean.Item, 0, end-start)
-		for _, v := range h.Items[start:end] {
-			c.Items = append(c.Items, clean.Item{Type: v.Type, Text: v.Text})
+		// Reserve space for the protocol envelope and next cursor before adding full native messages.
+		header, err := json.Marshal(c)
+		if err != nil {
+			return nil, err
 		}
-		return adapter.ReadResult{Candidate: c, NextCursor: next}, nil
+		remaining := adapter.MaxResponseBytes - len(header) - 192
+		for i := w.start; i < w.end; i++ {
+			item := clean.Item{Type: h.Items[i].Type, Text: h.Items[i].Text}
+			body, err := json.Marshal(item)
+			if err != nil {
+				return nil, err
+			}
+			if len(body)+1 > remaining {
+				if i == w.start {
+					return nil, errors.New("one selected native message exceeds the adapter response budget")
+				}
+				w.end = i
+				break
+			}
+			remaining -= len(body) + 1
+			c.Items = append(c.Items, item)
+		}
+		return adapter.ReadResult{Candidate: c, NextCursor: w.next()}, nil
 	}
 	return nil, errors.New("session was not found in the selected project")
 }
@@ -92,42 +107,4 @@ func pageError(err error) error {
 		return adapter.Fail("source_changed", "after_refresh", "native history changed; repeat the exact selection")
 	}
 	return err
-}
-
-func Capabilities(ctx context.Context, name string) adapter.Capabilities {
-	caps := adapter.Capabilities{Adapter: name, Protocol: 1, Version: "unavailable", Source: []string{"list", "read"}, Destination: []string{}, Recovery: "manual"}
-	bin, err := exec.LookPath(name)
-	if err != nil {
-		return caps
-	}
-	// Probe from a neutral directory: version detection must not activate the current project's config.
-	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, bin, "--version")
-	cmd.Dir = os.TempDir()
-	cmd.WaitDelay = 250 * time.Millisecond
-	var output boundedVersion
-	cmd.Stdout = &output
-	if err := cmd.Run(); err != nil {
-		return caps
-	}
-	data := output.buf.Bytes()
-	version := strings.TrimSpace(string(data))
-	if version == "" || strings.ContainsAny(version, "\r\n\x1b") {
-		return caps
-	}
-	caps.Version = version
-	caps.Destination = []string{"stageReference", "resolve"}
-	caps.Recovery = "lookupByOperationId"
-	return caps
-}
-
-// Keep a mislabeled executable from streaming arbitrary output into the doctor response.
-type boundedVersion struct{ buf bytes.Buffer }
-
-func (b *boundedVersion) Write(p []byte) (int, error) {
-	if b.buf.Len()+len(p) > 1024 {
-		return 0, errors.New("unexpected version output")
-	}
-	return b.buf.Write(p)
 }

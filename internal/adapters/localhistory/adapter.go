@@ -2,7 +2,7 @@ package localhistory
 
 import (
 	"context"
-	"os/exec"
+	"slices"
 
 	"github.com/openclaw/beam/internal/adapter"
 	"github.com/openclaw/beam/internal/adapters/staged"
@@ -19,8 +19,12 @@ func Dispatch(ctx context.Context, q adapter.Request, store staged.Store, reader
 		}
 		return r.Call(ctx, q)
 	case "stageReference":
-		if _, err := exec.LookPath(store.Adapter); err != nil {
+		caps := Capabilities(ctx, store.Adapter)
+		if caps.Version == "unavailable" {
 			return nil, adapter.Fail("not_installed", "after_setup", "install "+store.Adapter+" before opening a staged reference")
+		}
+		if !slices.Contains(caps.Destination, q.Op) {
+			return nil, adapter.Fail("unsupported_version", "after_setup", "the installed "+store.Adapter+" does not advertise its native reference option")
 		}
 		return store.Stage(q)
 	case "resolve":

@@ -234,12 +234,24 @@ func Message(role, text string) []Item {
 }
 
 // Cursor binds a position to an adapter, exact selection, and projected read generation.
-func Page(key string, values any, length int, cursor string, limit int) (int, int, string, error) {
+type window struct {
+	start, end, length int
+	revision           string
+}
+
+func (w window) next() string {
+	if w.end >= w.length {
+		return ""
+	}
+	return base64.RawURLEncoding.EncodeToString([]byte(w.revision + ":" + strconv.Itoa(w.end)))
+}
+
+func page(key string, values any, length int, cursor string, limit int) (window, error) {
 	h := sha256.New()
 	h.Write([]byte(key))
 	h.Write([]byte{0})
 	if err := json.NewEncoder(h).Encode(values); err != nil {
-		return 0, 0, "", err
+		return window{}, err
 	}
 	rev := hex.EncodeToString(h.Sum(nil)[:16])
 	start := 0
@@ -247,23 +259,18 @@ func Page(key string, values any, length int, cursor string, limit int) (int, in
 		raw, err := base64.RawURLEncoding.DecodeString(cursor)
 		r, offset, ok := strings.Cut(string(raw), ":")
 		if err != nil || !ok || r != rev {
-			return 0, 0, "", errors.New("source_changed")
+			return window{}, errors.New("source_changed")
 		}
 		start, err = strconv.Atoi(offset)
 		if err != nil || start < 0 || start > length {
-			return 0, 0, "", errors.New("invalid cursor")
+			return window{}, errors.New("invalid cursor")
 		}
 	}
 	if limit == 0 {
 		limit = 50
 	}
 	if limit < 1 || limit > 200 {
-		return 0, 0, "", errors.New("limit must be 1..200")
+		return window{}, errors.New("limit must be 1..200")
 	}
-	end := min(start+limit, length)
-	next := ""
-	if end < length {
-		next = base64.RawURLEncoding.EncodeToString([]byte(rev + ":" + strconv.Itoa(end)))
-	}
-	return start, end, next, nil
+	return window{start: start, end: min(start+limit, length), length: length, revision: rev}, nil
 }
