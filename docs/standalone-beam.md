@@ -8,7 +8,7 @@ read_when:
 
 # Standalone Beam and OpenClaw session portability
 
-**Status.** The standalone CLI, cleaner and adapters have executable contracts and conformance tests. The OpenClaw sections describe the receiver and SDK changes required to qualify the full integration. The design baseline is OpenClaw `b9ef0d7fca28` and the released agent-skills sender `1fa548f4ad81`. The [harness matrix](../site/index.html) records tested versions. The [release criteria](#release-acceptance) apply to a packaged distribution.
+**Status.** The standalone CLI, cleaner and adapters have executable contracts and conformance tests. The OpenClaw sections describe the receiver and SDK changes required to qualify the full integration. The design baseline is OpenClaw `b9ef0d7fca28` and the released agent-skills sender `1fa548f4ad81`. The [harness matrix](https://openclaw.github.io/beam/#support) records tested versions. The [release criteria](#release-acceptance) apply to a packaged distribution.
 
 ## Operator experience
 
@@ -36,6 +36,8 @@ beam open repair.beam.json --in codex
 `beam open` defaults to `--mode auto`. Beam tries the adapter’s advertised passive native copy or stages a reference. Use `--mode native` to require a verified native session. A staged receipt contains a handle and the next action. `beam resolve --in HARNESS --handle HANDLE` reopens that reference and `beam lookup --in HARNESS --operation-id ID` checks a previous operation. Supply a new instruction with `beam send --in HARNESS --handle HANDLE --request-id UUID --message TEXT` when the adapter supports send. An explicit `--message` on `open` combines preparation and send. A handoff retires future Beam writes to that receiver publication. Other copies and the original source harness remain independent.
 
 The direct `push` command combines source selection and destination delivery. For example, `beam push --from claude --session <id> --to opencode` creates a local copy. Add `--dry-run` to write the cleaned packet to stdout and its digest to stderr before contacting the destination. On a subsequent push, `--expect-digest sha256:<64 lowercase hex digits>` checks that the exact outgoing bytes still match. Use `beam pack --from HARNESS --session ID --out -` to stream the packet. A remote publication requires an explicit `share` or `handoff`.
+
+For remote commands, choose the receiver independently of the supplied link. Pass `--endpoint https://team.example/team` or set `BEAM_ENDPOINT`. Use `--profile-dir DIR` when a shortened human link needs the corresponding OpenClaw remote profile.
 
 For a v1 receiver, run `beam convert repair.beam.json --packet-version 1 --out repair.v1.json`, then `beam inspect repair.v1.json` and review the projected bytes. The v1 packet omits speaker aliases. Choose the v1 endpoint explicitly when sharing the reviewed projection.
 
@@ -198,16 +200,18 @@ The operator installs the harness and supplies their own credentials. Run `beam 
 | --- | --- | --- |
 | Codex 0.172.0 | Read one thread’s visible conversation and recognize Beam’s quoted reference frame on re-export. | `ready` after opening a durable thread. The imported frame persists in model context. Its historical items do not appear as individual turns in the native transcript. |
 | OpenCode 1.19.6 | Export a selected session and project visible text. | `ready` after creating a session and storing one quoted reference message with `noReply:true`. The reference appears in native history and export. |
-| Claude Code | Read the selected project session. | `staged`. A per-invocation SessionStart hook points to the reviewed local artifact. The operator supplies the first instruction. |
-| Pi | Select the session and follow the chosen branch. | `staged`. The native extension supplies a reference notice on the first explicit turn. |
-| Gemini CLI | Select the project and session. | `staged`. Open a generated session file in the native CLI. Version 0.45.0 assigned a fresh identity before login. Completing a model turn requires the target’s own login. |
+| Claude Code 2.1.296 | After an explicit turn, Beam read the selected native session by ID and recovered the user question and assistant reply. | `staged`. Open made zero model calls. A per-invocation SessionStart hook supplied a reference path. One explicit instruction sent that path and the new question to the loopback model. |
+| Pi 0.83.0 | Read the selected session branch. After an explicit turn, Beam read the native session ID and recovered the new question and answer. | `staged`. Native startup had zero messages and model calls. The extension attached one reference notice to the first explicit turn. |
+| Gemini CLI 0.45.0 | Beam read the fresh native ID created on import. | `staged`. Importing the generated session file persisted a reference notice under a new native ID before Gemini requested login. The test ended at login with zero user turns. |
 | ACP / ACPX | `--from acpx:<agent>` (also `acp:<agent>`) reads selected project history. Stock acpx 0.22.0 does not establish completeness, so Beam marks the packet truncated. | `staged` on 0.22.0. Lookup and resolve recover the private reference after restart. Programmatic send requires an acpx whose prompt command supports `--expect-record` to verify the immutable session record. |
 | File | Read a selected Beam packet or UTF-8 text file. | `manual`. Render a Markdown artifact for the recipient to attach. |
 | OpenClaw | Read an authorized native session through the selected host or profile. Preserve the backend’s completeness evidence. | An enabled receiver can advertise remote snapshot and handoff operations. Qualifying first continuation, ordinary Team access and reopen requires the combined host and plugin. |
 
+On Claude and Pi the first model request contained a path to the reviewed reference and the operator’s question. The packet prose stayed in the local artifact. On all three staged bridges `resolve` recovers the Beam handle. Reading a subsequently created native session requires its own source selection. [Claude](https://github.com/openclaw/beam/blob/643d748dbb28dd245901b070f70718bfc1319f8b/internal/adapters/claude/native_test.go) · [Pi](https://github.com/openclaw/beam/blob/643d748dbb28dd245901b070f70718bfc1319f8b/internal/adapters/pi/native_test.go) · [Gemini](https://github.com/openclaw/beam/blob/643d748dbb28dd245901b070f70718bfc1319f8b/internal/adapters/gemini/native_test.go)
+
 The public CLI round trip used stock Codex 0.172.0, OpenCode 1.19.6, a synthetic conversation and a loopback model. Beam reopened and re-exported each native copy in a fresh process. Those operations made zero model requests. An explicit Codex send then made one request containing both the imported reference and the new instruction. [Executable round trip](../conformance/e2e/native_test.go)
 
-Stock acpx 0.22.0 supports passive selection and staging. For a guarded first send, Beam probes for `acpx <agent> prompt -s <name> --expect-record <record-id> --file -`. When available, the first explicit instruction creates and seeds the native target. A confirmed replay returns its receipt. An ambiguous interruption requires reconciliation. Stock 0.22.0 does not advertise this flag. [Beam ACP adapter](../internal/adapters/acp)
+Stock acpx 0.22.0 supports passive selection and staging. Within the supported 0.22.x series, Beam probes for `acpx <agent> prompt -s <name> --expect-record <record-id> --file -`. When available, the first explicit instruction creates and seeds the native target. A confirmed replay returns its receipt. An ambiguous interruption requires reconciliation. Stock 0.22.0 does not advertise this flag. [Beam ACP adapter](../internal/adapters/acp)
 
 Evidence for these adapter choices:
 
