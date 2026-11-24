@@ -15,6 +15,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/openclaw/beam/internal/adapter"
 )
 
 const responseLimit = 4 << 20
@@ -47,18 +49,33 @@ func New(ctx context.Context, profileDir, receiverEndpoint, executable string) (
 		return nil, err
 	}
 	env := profileEnvironment(os.Environ(), dir, config)
-	return newClient(ctx, receiverEndpoint, func(ctx context.Context, args []string) (json.RawMessage, error) {
+	return newClient(ctx, receiverEndpoint, jsonRunner(exe, prefix, env, "OpenClaw request failed; check this remote profile's normal authentication, permissions and Gateway availability"))
+}
+
+// Native CLI diagnostics can include sensitive request/profile details. Classify
+// the Gateway's auth failures privately and return only the caller's fixed diagnostic.
+func jsonRunner(exe string, prefix, env []string, diagnostic string) runner {
+	return func(ctx context.Context, args []string) (json.RawMessage, error) {
 		ctx, cancel := context.WithTimeout(ctx, 130*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, exe, append(append([]string(nil), prefix...), args...)...)
 		cmd.Env = env
-		var stdout cappedOutput
-		cmd.Stdout = &stdout
-		if err := cmd.Run(); err != nil || !json.Valid(stdout.Bytes()) {
-			return nil, errors.New("OpenClaw request failed; check this remote profile's normal authentication, permissions and Gateway availability")
+		var stdout, stderr cappedOutput
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		if err := cmd.Run(); err != nil {
+			message := strings.ToLower(string(stderr.Bytes()))
+			for _, prefix := range []string{"unauthorized", "missing scope:", "scope upgrade pending approval", "pairing required", "not authorized", "forbidden"} {
+				if strings.Contains(message, prefix) {
+					return nil, adapter.Fail("unauthorized", "never", diagnostic)
+				}
+			}
+			return nil, errors.New(diagnostic)
+		}
+		if !json.Valid(stdout.Bytes()) {
+			return nil, errors.New(diagnostic)
 		}
 		return json.RawMessage(stdout.Bytes()), nil
-	})
+	}
 }
 
 func resolveExecutable(name string) (string, []string, error) {

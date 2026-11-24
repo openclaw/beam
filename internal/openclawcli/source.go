@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 // NewSource uses normal Gateway authentication. Explicit remote profiles must match the
@@ -47,17 +46,7 @@ func NewSource(ctx context.Context, profileDir, endpoint, executable string) (*C
 	if err != nil {
 		return nil, "", err
 	}
-	return &Client{run: func(ctx context.Context, args []string) (json.RawMessage, error) {
-		ctx, cancel := context.WithTimeout(ctx, 130*time.Second)
-		defer cancel()
-		cmd := exec.CommandContext(ctx, exe, append(append([]string{}, prefix...), args...)...)
-		var stdout cappedOutput
-		cmd.Stdout = &stdout
-		if err := cmd.Run(); err != nil || !json.Valid(stdout.Bytes()) {
-			return nil, errors.New("OpenClaw read failed; check access to this Gateway and selected session")
-		}
-		return stdout.Bytes(), nil
-	}}, config, nil
+	return &Client{run: jsonRunner(exe, prefix, nil, "OpenClaw read failed; check access to this Gateway and selected session")}, config, nil
 }
 
 func (c *Client) SourceCall(ctx context.Context, method string, params any) (json.RawMessage, error) {
