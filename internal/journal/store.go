@@ -135,6 +135,16 @@ func (s *Store) Sent(ctx context.Context, endpoint, id string) (resource, digest
 	return resource, digest, err == nil, err
 }
 
+// SentUUID returns the original spelling as well as the fingerprint. Older HTTP
+// clients included the supplied UUID case in their request bytes.
+func (s *Store) SentUUID(ctx context.Context, endpoint, id string) (original, resource, digest string, found bool, err error) {
+	err = s.db.QueryRowContext(ctx, `SELECT id,resource,digest FROM beam_sent WHERE endpoint=? AND id=? COLLATE NOCASE`, endpoint, id).Scan(&original, &resource, &digest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", "", "", false, nil
+	}
+	return original, resource, digest, err == nil, err
+}
+
 func (s *Store) ConfirmSend(ctx context.Context, p Pending, digest string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

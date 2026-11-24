@@ -54,7 +54,7 @@ func TestLostSendAcknowledgementUsesStatusAndNoPlaintextJournal(t *testing.T) {
 	state := filepath.Join(t.TempDir(), "state.sqlite")
 	c := clientFor(t, srv.URL, state)
 	ctx := context.Background()
-	user := Instruction{RequestID: id, Text: instruction}
+	user := Instruction{RequestID: strings.ToUpper(id), Text: instruction}
 	if _, err := c.Continue(ctx, link, user); err == nil {
 		t.Fatal("lost response appeared successful")
 	}
@@ -64,6 +64,7 @@ func TestLostSendAcknowledgementUsesStatusAndNoPlaintextJournal(t *testing.T) {
 		t.Fatal("journal retained private user instruction", err)
 	}
 	c = clientFor(t, srv.URL, state)
+	user.RequestID = id
 	out, err := c.Continue(ctx, link, user)
 	if err != nil || out.State != "accepted" {
 		t.Fatalf("reconcile: %+v %v", out, err)
@@ -146,5 +147,45 @@ func TestConditionalReleaseRefusalRestoresOnlyVerifiedWritableSource(t *testing.
 	}
 	if _, found, err := c.LegacyRow(ctx, fixtureID); err != nil || found {
 		t.Fatalf("definitely refused writable source stayed fenced: found=%v err=%v", found, err)
+	}
+}
+
+func TestRecoveredHistoricalSendKeepsOriginalFingerprint(t *testing.T) {
+	const lower = "ad6d7344-063d-497c-8811-245654065557"
+	const publication = "original"
+	original := strings.ToUpper(lower)
+	queries := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case v2Path + "/capabilities":
+			fmt.Fprint(w, `{"protocol":2,"packetVersions":[2],"operations":["continue"],"maxBodyBytes":57344,"sendReceiptRetentionSeconds":60}`)
+		case v2Path + "/publications/" + publication + "/requests/" + lower:
+			queries++
+			json.NewEncoder(w).Encode(SendReceipt{RequestID: original, State: "accepted"})
+		default:
+			t.Error("unexpected operation", r.Method, r.URL.Path)
+			w.WriteHeader(404)
+		}
+	}))
+	defer srv.Close()
+	c := clientFor(t, srv.URL, filepath.Join(t.TempDir(), "state.sqlite"))
+	j, err := c.journal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	in := Instruction{RequestID: original, Text: "review"}
+	data, _ := json.Marshal(in)
+	p, err := j.Begin(ctx, journal.Pending{Endpoint: c.legacyEndpoint, Kind: "send", Resource: publication, ID: original, Body: []byte(packet.Digest(data)), Created: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := j.ConfirmSend(ctx, p, packet.Digest(data)); err != nil {
+		t.Fatal(err)
+	}
+	in.RequestID = lower
+	got, err := c.Continue(ctx, v2Path+"/publications/"+publication, in)
+	if err != nil || queries != 1 || got.RequestID != lower {
+		t.Fatalf("lost original identity: %+v %v", got, err)
 	}
 }

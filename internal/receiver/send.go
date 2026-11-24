@@ -27,9 +27,10 @@ type SendReceipt struct {
 
 func parseSendReceipt(raw []byte, id string) (SendReceipt, error) {
 	var r SendReceipt
-	if json.Unmarshal(raw, &r) != nil || r.RequestID != id || !slices.Contains([]string{"pending", "accepted", "completed", "needs_reconciliation"}, r.State) {
+	if json.Unmarshal(raw, &r) != nil || !strings.EqualFold(r.RequestID, id) || !slices.Contains([]string{"pending", "accepted", "completed", "needs_reconciliation"}, r.State) {
 		return r, failure("invalid_send_receipt", "after_reconcile")
 	}
+	r.RequestID = strings.ToLower(id)
 	if r.State == "needs_reconciliation" {
 		return r, failure("needs_reconciliation", "after_reconcile")
 	}
@@ -55,6 +56,7 @@ func (c *Client) Continue(ctx context.Context, link string, in Instruction) (Sen
 	if in.RequestID != "" && !uuidRE.MatchString(in.RequestID) {
 		return SendReceipt{}, failure("invalid_request_id", "never")
 	}
+	in.RequestID = strings.ToLower(in.RequestID)
 	caps, err := c.Capabilities(ctx)
 	if err != nil {
 		return SendReceipt{}, err
@@ -70,12 +72,14 @@ func (c *Client) Continue(ctx context.Context, link string, in Instruction) (Sen
 		return SendReceipt{}, err
 	}
 	if in.RequestID != "" {
-		resource, digest, found, err := s.Sent(ctx, c.legacyEndpoint, in.RequestID)
+		original, resource, digest, found, err := s.SentUUID(ctx, c.legacyEndpoint, in.RequestID)
 		if err != nil {
 			return SendReceipt{}, err
 		}
 		if found {
-			b, _ := json.Marshal(in)
+			wire := in
+			wire.RequestID = original
+			b, _ := json.Marshal(wire)
 			if resource != publication || digest != packet.Digest(b) {
 				return SendReceipt{}, failure("request_identity_conflict", "never")
 			}
@@ -119,7 +123,7 @@ func (c *Client) Continue(ctx context.Context, link string, in Instruction) (Sen
 		return SendReceipt{}, err
 	}
 	digest := packet.Digest(data)
-	if string(p.Body) != digest || (in.RequestID != "" && in.RequestID != p.ID) {
+	if string(p.Body) != digest || (in.RequestID != "" && !strings.EqualFold(in.RequestID, p.ID)) {
 		return SendReceipt{}, failure("pending_send_differs", "after_reconcile")
 	}
 	finish := func(receipt SendReceipt) (SendReceipt, error) {
