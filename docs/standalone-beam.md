@@ -80,7 +80,7 @@ The public page needs the install command, two-harness walkthrough, synthetic cl
 
 ## Portable data and cleaning
 
-Use a closed JSON Schema, Draft 2020-12, with a transport-level byte limit. Preserve v1 on its existing route. The proposed v2 portable packet has this complete shape:
+The v2 packet uses a closed Draft 2020-12 JSON Schema and a transport-level byte limit. The v1 endpoint retains its own packet contract. [V2 schema](../schema/packet-v2.schema.json) · [V1 schema](../schema/packet-v1.schema.json) · [Cleaner input](../schema/packet-candidate-v1.schema.json)
 
 ```ts
 type PacketV2 = {
@@ -161,6 +161,8 @@ Wrap each machine request with `{protocol:1, request:<AdapterOp>}` and result wi
 
 For `beam clean --protocol 1`, the host supplies one assembled `read` result with the cursor omitted and the same origin and branch fields. On success stdout contains only v2 packet bytes. Omission counts go to stderr without source text. An incomplete read sets `truncated`. Use `beam capabilities --json` to negotiate CLI protocol, packet versions, and built-in adapter IDs before invoking it. `doctor` also probes the tools installed on the current machine.
 
+The public schemas define the request, common success/error envelope and operation-specific result. The conformance test runs an external process that implements those JSON contracts directly, selected with `--adapter ID=/absolute/executable` on the relevant Beam subcommand. [Request](../schema/adapter-v1.schema.json) · [Envelope](../schema/cli-v1.schema.json) · [Results](../schema/adapter-result-v1.schema.json) · [Executable conformance](../conformance/e2e/external_test.go)
+
 Before launching a mutating adapter operation, the host durably records its operation ID when retry recovery is requested. An adapter advertising `lookupByOperationId` must implement `lookupOperation`. It accepts the original ID even if the child exited before emitting a handle. It returns `{state:"pending"|"unknown"}` or the recorded `OpenResult`. An unknown outcome never authorizes an automatic second create.
 
 `resolve` returns the current `OpenResult` and performs no creation. `send` returns `{state:"accepted"|"completed",requestId,handle}` with the strength supported by the harness. Emit `ready` only after native persistence and reopen are verified. A staged reference may live in a user-selected file or a private, bounded pending store until consumed or explicitly discarded. Its `handle` must continue to work after Beam exits. Retry creates a new copy only when the person explicitly requests another one. A timed-out target that cannot find a prior operation yields `needs_reconciliation`. It must not advertise durable handoff.
@@ -205,7 +207,7 @@ The operator installs the harness and supplies their own credentials. Run `beam 
 | Gemini CLI 0.45.0 | Beam read the fresh native ID created on import. | `staged`. Importing the generated session file persisted a reference notice under a new native ID before Gemini requested login. The test ended at login with zero user turns. |
 | ACP / ACPX | `--from acpx:<agent>` (also `acp:<agent>`) reads selected project history. Stock acpx 0.22.0 does not establish completeness, so Beam marks the packet truncated. | `staged` on 0.22.0. Lookup and resolve recover the private reference after restart. Programmatic send requires an acpx whose prompt command supports `--expect-record` to verify the immutable session record. |
 | File | Read a selected Beam packet or UTF-8 text file. | `manual`. Render a Markdown artifact for the recipient to attach. |
-| OpenClaw | Read an authorized native session through the selected host or profile. Preserve the backend’s completeness evidence. | An enabled receiver can advertise remote snapshot and handoff operations. Qualifying first continuation, ordinary Team access and reopen requires the combined host and plugin. |
+| OpenClaw 2026.6.11 | An independently paired read-only device exported the selected session and excluded the second fixture conversation. This Gateway supplied no pagination receipt, so its packet was marked truncated. A wrong-token device received an authentication error (exit 4) and no packet. [Source conformance](https://github.com/openclaw/beam/blob/196f25c7183533a4f53c1d7fb3d673e76b99a90b/internal/adapters/openclaw/native_test.go) | An enabled receiver can advertise remote snapshot and handoff operations. Qualifying first continuation, ordinary Team access and reopen requires the combined host and plugin. |
 
 On Claude and Pi the first model request contained a path to the reviewed reference and the operator’s question. The packet prose stayed in the local artifact. On all three staged bridges `resolve` recovers the Beam handle. Reading a subsequently created native session requires its own source selection. [Claude](https://github.com/openclaw/beam/blob/643d748dbb28dd245901b070f70718bfc1319f8b/internal/adapters/claude/native_test.go) · [Pi](https://github.com/openclaw/beam/blob/643d748dbb28dd245901b070f70718bfc1319f8b/internal/adapters/pi/native_test.go) · [Gemini](https://github.com/openclaw/beam/blob/643d748dbb28dd245901b070f70718bfc1319f8b/internal/adapters/gemini/native_test.go)
 
