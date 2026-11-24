@@ -326,3 +326,58 @@ func TestBeamBinaryACPX(t *testing.T) {
 		t.Fatalf("incorrect binary handoff: %s", text)
 	}
 }
+
+// Exercise the interleaving between Beam's check and acpx's queue admission.
+// Replacing the name is a native acpx operation; both queue owners use the real peer.
+func TestACPXRefusesReplacedDestination(t *testing.T) {
+	a, project, _ := acpxFixture(t)
+	if !boundSends(t, a) {
+		t.Skip("installed acpx supports passive references only")
+	}
+	sh, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("the interleaving fixture requires a POSIX shell")
+	}
+	wrapper := filepath.Join(project, "interleave-acpx")
+	const script = `
+name=
+file=false
+prompt=false
+prev=
+for arg in "$@"; do
+  if [ "$prev" = "-s" ]; then name=$arg; fi
+  case "$arg" in prompt) prompt=true ;; --file) file=true ;; esac
+  prev=$arg
+done
+if [ "$prompt" = true ] && [ "$file" = true ] && [ -n "$name" ]; then
+  "$REAL_ACPX" --format quiet fixture sessions new --name "$name" >/dev/null || exit 1
+fi
+exec "$REAL_ACPX" "$@"
+`
+	if err := os.WriteFile(wrapper, []byte("#!"+sh+"\n"+script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	a.env = append(a.env, "REAL_ACPX="+a.Binary)
+	a.Binary = wrapper
+	value, err := a.Call(t.Context(), adapter.Request{Op: "stageReference", OperationID: "swap", Packet: testPacket()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stage := value.(adapter.OpenResult)
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = a.run(ctx, "", 8192, "--format", "quiet", "fixture", "sessions", "close", "beam-"+stage.Handle)
+	})
+	_, err = a.Call(t.Context(), adapter.Request{Op: "send", Handle: stage.Handle, RequestID: "swap-prompt", Instruction: "must never reach replacement"})
+	if err == nil {
+		t.Fatal("accepted a replaced destination")
+	}
+	raw, err := os.ReadFile(filepath.Join(project, "fixture-acp.ndjson"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(raw), `"method":"session/new"`) < 2 || strings.Contains(string(raw), `"method":"session/prompt"`) {
+		t.Fatal("reassigning a session name delivered a prompt or failed to replace the destination")
+	}
+}
