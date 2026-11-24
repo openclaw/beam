@@ -23,6 +23,17 @@ type cli struct {
 	env  []string
 }
 
+func privateTempDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	// Go's test subdirectories inherit the runner's umask. Native harnesses
+	// check that the account owns every writable state ancestor.
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 func newCLI(t *testing.T) cli {
 	t.Helper()
 	path := os.Getenv("BEAM_E2E_BINARY")
@@ -45,7 +56,7 @@ func newCLI(t *testing.T) cli {
 			t.Fatal(err)
 		}
 	}
-	root := t.TempDir()
+	root := privateTempDir(t)
 	home, workspace := filepath.Join(root, "home"), filepath.Join(root, "workspace")
 	for _, dir := range []string{home, workspace} {
 		if err := os.Mkdir(dir, 0700); err != nil {
