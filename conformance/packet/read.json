@@ -1,0 +1,23 @@
+{
+  "source": "codex",
+  "title": "CSV importer",
+  "updatedAt": "2024-02-29T01:02:03Z",
+  "completed": false,
+  "items": [
+    {
+      "type": "userMessage",
+      "text": "Keep quoted newlines inside a cell.",
+      "speakerId": "fixture-private-user"
+    },
+    {
+      "type": "agentMessage",
+      "text": "The Windows test is still missing."
+    }
+  ],
+  "origin": {
+    "adapter": "codex",
+    "sourceHome": "fixture-home",
+    "nativeSession": "session-1"
+  },
+  "completeness": "complete"
+}

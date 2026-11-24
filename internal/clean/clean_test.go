@@ -1,0 +1,123 @@
+package clean
+
+import (
+	"encoding/json"
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/openclaw/beam/internal/packet"
+)
+
+func candidate(items ...Item) Candidate {
+	return Candidate{Source: "codex", Origin: Origin{"codex", "fixture-home", "session-1"}, Title: "CSV importer", UpdatedAt: "2024-02-29T01:02:03Z", Items: items, Completeness: "complete"}
+}
+
+func TestCleanerGolden(t *testing.T) {
+	input, err := os.ReadFile("../../conformance/packet/read.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := ParseCandidate(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, r, err := Build(c, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r != (Report{}) {
+		t.Fatalf("unexpected loss: %+v", r)
+	}
+	b, err := packet.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile("../../conformance/packet/example.beam.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(want) != string(b) {
+		t.Fatal("golden packet bytes changed")
+	}
+}
+
+func TestCleanEveryVisibleField(t *testing.T) {
+	c := candidate(Item{Type: "userMessage", Text: "Please check raw.person@example.test\r\nThanks!", SpeakerID: "private-user-123"}, Item{Type: "agentMessage", Text: "[Beam asset omitted: file confidential.person@example.test.txt (1 KB)]"}, Item{Type: "other", Text: "Secret records\nAPI_TOKEN: |\n  synthetic-fragment-one\n  synthetic-fragment-two\nFinished"}, Item{Type: "agentMessage", Text: "more ALPHA42"}, Item{Type: "userMessage", Text: "sensitive user-selected turn", SpeakerID: "private-user-456"})
+	c.Title = "Fix on /Users/example/project"
+	c.SourceModel = &packet.Model{Provider: "fixture", Model: "private@example.test"}
+	c.Completeness = "partial"
+	p, r, err := Build(c, Options{OmitItems: []int{5}, RedactLiterals: []string{"ALPHA42"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := packet.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"example.test", "/Users/", "API_TOKEN", "fragment-one", "fragment-two", "ALPHA42", "private-user", "sensitive user-selected", "fixture-home", "session-1"} {
+		if strings.Contains(string(b), secret) {
+			t.Errorf("leaked %s", secret)
+		}
+	}
+	if p.Items[0].Speaker != "p1" || !strings.Contains(p.Items[1].Text, "[Beam asset omitted: file]") || !strings.Contains(p.Items[2].Text, "Finished") || !r.Truncated || r.Omissions < 2 || r.Redactions < 3 || r.LossyConversions != 1 {
+		t.Fatalf("unexpected cleaned projection or counts: %+v", r)
+	}
+}
+
+func TestVisibleRedactions(t *testing.T) {
+	for _, s := range []string{
+		"Authorization: Bearer fixture-credential-here", "--password example-value", "DB_PASS=\\\n  example-value", "PGPASSFILE=example-value",
+		"PASSWORD: >-\n  example-value\n  second-line\nSafe", "-----BEGIN PRIVATE KEY-----\nexample-value",
+		"key at /private/fixture/example-value", `file "C:\Some Path\example-value"`, "network https://example.test/?path=%252Fprivate%252Fexample-value",
+		"run <system-reminder>example-value</system-reminder> now", "ß<environment_context>example-value</environment_context> end",
+		"pass sk-fixtureabcdefghijklmnopqrst or bob@example.test", "phone +1 202 555 0126",
+	} {
+		r := Report{}
+		out := cleanText(s, nil, &r)
+		for _, sensitive := range []string{"fixture-credential", "example-value", "second-line", "sk-fixture", "bob@example.test", "202 555"} {
+			if strings.Contains(out, sensitive) {
+				t.Errorf("failed expected redaction for %q", s)
+			}
+		}
+	}
+	for _, s := range []string{"2026-12-04", "https://example.test/docs/api", "Keep 3 rows.", "2026.12.06"} {
+		r := Report{}
+		if got := cleanText(s, nil, &r); got != s {
+			t.Errorf("expected %q got %q", s, got)
+		}
+	}
+}
+
+func TestFitAndFilter(t *testing.T) {
+	var items []Item
+	for range 210 {
+		items = append(items, Item{Type: "userMessage", Text: strings.Repeat("🦊", 3100), SpeakerID: "same-source-user"})
+	}
+	items = append(items, Item{Type: "agentMessage", Text: "Most recent"})
+	p, r, err := Build(candidate(items...), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := packet.Marshal(p)
+	if err != nil || len(b) > packet.MaxBytes || !p.Truncated || !r.Truncated || len(p.Items) >= 200 || p.Items[len(p.Items)-1].Text != "Most recent" {
+		t.Fatal("did not retain bounded newest tail")
+	}
+	runes := []rune(p.Items[0].Text)
+	if len(runes) != 3000 || runes[2999] != '🦊' {
+		t.Fatal("clipping split an astral scalar")
+	}
+	for _, c := range []Candidate{candidate(Item{Type: "toolResult", Text: "raw fixture"}), candidate(Item{Type: "agentMessage", Text: "<system-reminder>private</system-reminder>"})} {
+		if _, _, err := Build(c, Options{}); err == nil {
+			t.Fatal("accepted unsafe or empty projection")
+		}
+	}
+	c := candidate(Item{Type: "agentMessage", Text: "visible"})
+	b, _ = json.Marshal(c)
+	if _, err := ParseCandidate([]byte(strings.Replace(string(b), `"title":`, `"title":"duplicate","title":`, 1))); err == nil {
+		t.Fatal("accepted duplicate candidate key")
+	}
+	if _, _, err := Build(c, Options{OmitItems: []int{2}}); err == nil {
+		t.Fatal("accepted invalid omission index")
+	}
+}
