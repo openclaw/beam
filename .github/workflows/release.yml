@@ -73,13 +73,17 @@ jobs:
           BEAM_VERSION: ${{ needs.build.outputs.version }}
         run: |
           tar -xzf "release-assets/beam_${BEAM_VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" beam
-          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/harnesses" @openai/codex@0.172.0 opencode-ai@1.19.6 acpx@0.22.0
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/harnesses" \
+            @openai/codex@0.172.0 opencode-ai@1.19.6 acpx@0.22.0 \
+            @anthropic-ai/claude-code@2.1.296 @earendil-works/pi-coding-agent@0.83.0 @google/gemini-cli@0.45.0
           harness_bin="$RUNNER_TEMP/harnesses/node_modules/.bin"
+          export PATH="$harness_bin:$PATH"
           export BEAM_E2E_BINARY="$RUNNER_TEMP/beam"
           export BEAM_E2E_CODEX="$harness_bin/codex" BEAM_E2E_OPENCODE="$harness_bin/opencode"
           export BEAM_TEST_ACPX="$harness_bin/acpx"
           go test -v -count=1 -tags=beam_native ./conformance/e2e -run '^TestNativeRoundTrip$'
           go test -v -count=1 ./internal/adapters/acp
+          BEAM_TEST_NATIVE=1 go test -v -count=1 ./internal/adapters/{claude,pi,gemini}
   smoke:
     needs: build
     strategy:

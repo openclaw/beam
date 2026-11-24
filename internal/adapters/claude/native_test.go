@@ -27,12 +27,15 @@ func TestNativeClaudeReference(t *testing.T) {
 	}
 	home := t.TempDir()
 	project := t.TempDir()
-	bin := filepath.Join(t.TempDir(), "beam")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-	if out, err := exec.Command("go", "build", "-o", bin, "../../../cmd/beam").CombinedOutput(); err != nil {
-		t.Fatalf("build Beam: %v: %.500s", err, out)
+	bin := os.Getenv("BEAM_E2E_BINARY")
+	if bin == "" {
+		bin = filepath.Join(t.TempDir(), "beam")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+		if out, err := exec.Command("go", "build", "-o", bin, "../../../cmd/beam").CombinedOutput(); err != nil {
+			t.Fatalf("build Beam: %v: %.500s", err, out)
+		}
 	}
 	calls := make(chan []byte, 8)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
