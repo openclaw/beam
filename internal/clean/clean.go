@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -66,13 +68,27 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 	if c.Origin.Adapter == "" || c.Source == "" || strings.TrimSpace(c.Origin.SourceHome) == "" || strings.TrimSpace(c.Origin.NativeSession) == "" {
 		return packet.Packet{}, r, errors.New("origin requires adapter, source home and native session")
 	}
-	if len(opts.RedactLiterals) > 256 {
-		return packet.Packet{}, r, errors.New("too many literal redactions")
-	}
-	for _, s := range opts.RedactLiterals {
-		if s == "" {
-			return packet.Packet{}, r, errors.New("empty literal redaction")
+	var mask *regexp.Regexp
+	if len(opts.RedactLiterals) > 0 {
+		if len(opts.RedactLiterals) > 256 {
+			return packet.Packet{}, r, errors.New("too many literal redactions")
 		}
+		keys := make([]string, 0, len(opts.RedactLiterals))
+		for _, s := range opts.RedactLiterals {
+			if s == "" {
+				return packet.Packet{}, r, errors.New("empty literal redaction")
+			}
+			keys = append(keys, regexp.QuoteMeta(s))
+		}
+		// Prefer longer overlapping literals. Replacements never become input to
+		// another literal, even when a user chooses a word in the replacement.
+		sort.SliceStable(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
+		var err error
+		mask, err = regexp.Compile(strings.Join(keys, "|"))
+		if err != nil {
+			return packet.Packet{}, r, errors.New("literal redaction list exceeds the matcher limit")
+		}
+		mask.Longest()
 	}
 	omit := make(map[int]bool, len(opts.OmitItems))
 	for _, i := range opts.OmitItems {
@@ -81,7 +97,7 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 		}
 		omit[i] = true
 	}
-	filter := func(s string) string { return cleanText(s, opts.RedactLiterals, &r) }
+	filter := func(s string) string { return cleanText(s, mask, &r) }
 	if filter(c.Source) != c.Source {
 		return packet.Packet{}, r, errors.New("source identifier contains private data")
 	}

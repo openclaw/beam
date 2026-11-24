@@ -41,7 +41,7 @@ var (
 	}
 )
 
-func cleanText(s string, literals []string, r *Report) string {
+func cleanText(s string, mask *regexp.Regexp, r *Report) string {
 	s = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n"))
 	for _, re := range wrappers {
 		s = re.ReplaceAllStringFunc(s, func(string) string { r.Omissions++; return "" })
@@ -57,11 +57,8 @@ func cleanText(s string, literals []string, r *Report) string {
 		}
 		return "[Beam asset omitted: " + kind + "]"
 	})
-	for _, lit := range literals {
-		if n := strings.Count(s, lit); n > 0 {
-			r.Redactions += n
-			s = strings.ReplaceAll(s, lit, "[REDACTED]")
-		}
+	if mask != nil {
+		s = mask.ReplaceAllStringFunc(s, func(string) string { r.Redactions++; return "[REDACTED]" })
 	}
 	replace := func(re *regexp.Regexp, v string) {
 		s = re.ReplaceAllStringFunc(s, func(string) string { r.Redactions++; return v })

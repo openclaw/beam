@@ -121,3 +121,18 @@ func TestFitAndFilter(t *testing.T) {
 		t.Fatal("accepted invalid omission index")
 	}
 }
+
+func TestOverlappingLiteralRedactions(t *testing.T) {
+	c := candidate(Item{Type: "userMessage", Text: "XX BLUEBIRD"})
+	literals := []string{"BLUE", "BLUEBIRD", "E"}
+	for range 64 {
+		literals = append(literals, "E")
+	}
+	p, r, err := Build(c, Options{RedactLiterals: literals})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Items[0].Text != "XX [REDACTED]" || r.Redactions != 1 {
+		t.Fatalf("unexpected literal projection %q, redactions=%d", p.Items[0].Text, r.Redactions)
+	}
+}
