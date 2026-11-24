@@ -24,15 +24,18 @@ import (
 func TestReleasedOpenClawSnapshotUpgrade(t *testing.T) {
 	old := os.Getenv("BEAM_E2E_OLD_OPENCLAW")
 	if old == "" {
-		t.Skip("set BEAM_E2E_OLD_OPENCLAW to the installed openclaw@2026.11.7 executable")
+		t.Skip("set BEAM_E2E_OLD_OPENCLAW to a released OpenClaw 2026.11.7 or 2026.11.8 executable")
 	}
 	candidate := os.Getenv("BEAM_E2E_OPENCLAW")
 	t.Setenv("BEAM_E2E_OPENCLAW", old)
 	c := newCLI(t)
 	g := newGateway(t, c, "http://127.0.0.1:1")
-	if version := string(g.cli(t, "--version")); !slices.Contains(strings.Fields(version), "2026.11.7") {
-		t.Fatalf("expected baseline OpenClaw 2026.11.7, got %q", version)
+	version := strings.TrimSpace(string(g.cli(t, "--version")))
+	fields := strings.Fields(version)
+	if !slices.Contains(fields, "2026.11.7") && !slices.Contains(fields, "2026.11.8") {
+		t.Fatalf("expected a released pre-generation writer, got %q", version)
 	}
+	t.Logf("released writer: %s", version)
 	g.cli(t, "plugins", "enable", "beam")
 	g.start(t)
 	edge := g.proxy(t, "publisher@example.test", "192.0.2.10", nil)
