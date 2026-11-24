@@ -245,13 +245,8 @@ func (c *Client) Handoff(ctx context.Context, id string, data []byte) (Release, 
 	if len(data) > 0 && packet.Digest(data) != tr.Digest {
 		return Release{}, failure("pending_release_differs", "after_reconcile")
 	}
-	if len(tr.Receipt) > 0 {
-		var saved Release
-		if json.Unmarshal(tr.Receipt, &saved) != nil {
-			return saved, failure("invalid_journal_receipt", "after_reconcile")
-		}
-		return saved, nil
-	}
+	// Replay the same recorded intent even after a local acknowledgement. Only the
+	// receiver can recheck the current caller's right to observe that publication.
 	if err := require(caps, "release"); err != nil {
 		return Release{}, err
 	}
@@ -260,6 +255,14 @@ func (c *Client) Handoff(ctx context.Context, id string, data []byte) (Release, 
 	}{tr.Digest})
 	r, err := c.request(ctx, "POST", v2Path+"/publications/"+tr.Generation+"/release", body, http.Header{"If-Match": {tr.Revision}, "Idempotency-Key": {tr.ID}})
 	if err != nil {
+		if asHTTP(err, 412) && len(tr.Receipt) == 0 {
+			head, exists, readErr := c.head(ctx, id)
+			if readErr == nil && exists && head.PublicationID == tr.Generation && head.State == "writable" && head.CanRelease {
+				if clearErr := s.ForgetRefusedTransfer(ctx, tr); clearErr != nil {
+					return Release{}, clearErr
+				}
+			}
+		}
 		return Release{}, err
 	}
 	var out Release

@@ -111,3 +111,20 @@ func (s *Store) BeginTransfer(ctx context.Context, t Transfer) (Transfer, error)
 func (s *Store) CompleteTransfer(ctx context.Context, t Transfer, receipt json.RawMessage) error {
 	return exactlyOne(s.db.ExecContext(ctx, `UPDATE beam_transfers SET packet=NULL,receipt=? WHERE endpoint=? AND beam_id=? AND id=? AND generation=? AND revision=? AND digest=?`, []byte(receipt), t.Endpoint, t.BeamID, t.ID, t.Generation, t.Revision, t.Digest))
 }
+
+// ForgetRefusedTransfer releases only the original still-pending fence after the
+// receiver confirms that the corresponding generation remains writable.
+func (s *Store) ForgetRefusedTransfer(ctx context.Context, t Transfer) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := exactlyOne(tx.ExecContext(ctx, `DELETE FROM beam_transfers WHERE endpoint=? AND beam_id=? AND id=? AND generation=? AND receipt IS NULL`, t.Endpoint, t.BeamID, t.ID, t.Generation)); err != nil {
+		return err
+	}
+	if err := exactlyOne(tx.ExecContext(ctx, `DELETE FROM handoffs WHERE endpoint=? AND beam_id=? AND payload IS NULL AND receipt IS NULL AND publication_id IS NULL`, t.Endpoint, t.BeamID)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
