@@ -21,7 +21,7 @@
     <section class="intro" aria-labelledby="title">
       <h1 id="title">Take your conversation to another coding agent.</h1>
       <p>Beam lets you choose a session, clean its history locally, and review the exact packet that goes to the next harness.</p>
-      <a class="button" href="#usage">Try Beam <span aria-hidden="true">↓</span></a>
+      <a class="button" href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download Beam 0.1.0 <span aria-hidden="true">↗</span></a>
     </section>
     <section class="example" aria-label="Synthetic cleaning example">
       <div class="sample">
@@ -36,8 +36,8 @@
       </div>
     </section>
     <section class="use" id="usage" aria-labelledby="usage-title">
-      <div><h2 id="usage-title">Use the CLI</h2><p>Install from source with Go, then check the adapters available on your machine.</p></div>
-      <pre><code>go install github.com/openclaw/beam/cmd/beam@main
+      <div><h2 id="usage-title">Install the CLI</h2><p>Extract the executable from the macOS, Linux or Windows archive for your processor. Put it on your <code>PATH</code>, then check the adapters on this machine.</p></div>
+      <pre><code>beam --version
 beam doctor --json</code></pre>
       <div><h3>Move a session</h3><p>Choose a Codex session in the source project. Review its cleaned bytes, then open them in OpenCode.</p></div>
       <pre><code>beam list --from codex

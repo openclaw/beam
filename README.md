@@ -4,12 +4,14 @@ Beam moves reviewed conversation history between coding agents. You choose the s
 
 ## Install and transfer
 
-Install from source with a current Go toolchain. The module supports Go 1.25 or newer. Release builds use the pinned compiler in [`.go-version`](.go-version).
+Download the archive for your operating system and architecture from the [Beam v0.1.0 release](https://github.com/openclaw/beam/releases/tag/v0.1.0). Extract `beam` (or `beam.exe` on Windows) to a directory on your `PATH`.
 
 ```sh
-go install github.com/openclaw/beam/cmd/beam@main
+beam --version
 beam doctor --json
 ```
+
+To verify a download with GitHub CLI, run `gh attestation verify ARCHIVE --repo openclaw/beam`. To build the release from source, run `go install github.com/openclaw/beam/cmd/beam@v0.1.0` with a current Go toolchain. The source supports Go 1.25 or newer.
 
 Run the following in the source project. Choose a session ID from the list.
 
