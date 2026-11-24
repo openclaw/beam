@@ -57,16 +57,16 @@ The command runs as the selected account on the target machine. It requires Beam
 | `openclaw/openclaw`     | Retain a small official `beam` plugin in the standard distribution, disabled by default. It owns OpenClaw ingress, receiver policy, catalog projection, and migration. Core owns generic request authority, catalog access and Team sessions.                                    |
 | `openclaw/agent-skills` | Keep the installed `skills/beam/scripts/beam` entry point, historical arguments, hook payloads, and legacy exit/receipt behavior. Make the skill delegate to a compatible binary once available. Retire the copied JS implementation after testing upgrades and installed hooks. |
 
-Proposed layout for the new repository:
+The standalone repository contains these implementation directories.
 
 ```text
 cmd/beam/                     native CLI and machine entry points
 internal/packet/              wire validation, bounded serialization and rendering
 internal/clean/               shared export policy and omission report
-internal/adapters/            codex, claude, opencode, pi, gemini, acp, file
+internal/adapters/            codex, claude, opencode, pi, gemini, acp, openclaw, file
 internal/receiver/            negotiation, HTTP client, auth and receipts
 internal/journal/             local pending handoffs and recovery
-schema/                       versioned packet, command, adapter and HTTP schemas
+schema/                       packet, CLI, adapter and skill schemas, generated packet validator
 conformance/                  synthetic input/output vectors and provider tests
 integrations/                 target-native hook/SDK bridges and compatibility skill
 site/                         one static page and links to release artifacts
@@ -213,7 +213,7 @@ On Claude and Pi the first model request contained a path to the reviewed refere
 
 The public CLI round trip used stock Codex 0.172.0, OpenCode 1.19.6, a synthetic conversation and a loopback model. Beam reopened and re-exported each native copy in a fresh process. Those operations made zero model requests. An explicit Codex send then made one request containing both the imported reference and the new instruction. [Executable round trip](../conformance/e2e/native_test.go)
 
-Stock acpx 0.22.0 supports passive selection and staging. Within the supported 0.22.x series, Beam probes for `acpx <agent> prompt -s <name> --expect-record <record-id> --file -`. When available, the first explicit instruction creates and seeds the native target. A confirmed replay returns its receipt. An ambiguous interruption requires reconciliation. Stock 0.22.0 does not advertise this flag. The upstream guarded implementation is under review. [Beam ACP adapter](../internal/adapters/acp) · [acpx immutable record selection](https://github.com/openclaw/acpx/pull/1053)
+The published acpx 0.22.0 supports passive selection and staging. Within the supported 0.22.x series, Beam probes for `acpx <agent> prompt -s <name> --expect-record <record-id> --file -`. When available, the first explicit instruction creates and seeds the native target. A confirmed replay returns its receipt. An ambiguous interruption requires reconciliation. The guarded prompt landed on acpx main after 0.22.0. Beam enables send when the installed binary advertises the flag. [Beam ACP adapter](../internal/adapters/acp) · [acpx immutable record selection](https://github.com/openclaw/acpx/pull/1053)
 
 Evidence for these adapter choices:
 
