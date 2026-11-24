@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4ed">
+  <meta name="description" content="Beam is a local CLI for moving reviewed conversation history between coding agents.">
+  <title>Beam · Portable coding conversations</title>
+  <link rel="stylesheet" href="beam.css">
+</head>
+<body>
+  <header>
+    <a class="wordmark" href="#top">Beam</a>
+    <nav aria-label="Project">
+      <a href="#usage">Usage</a>
+      <a href="#support">Support</a>
+      <a href="https://github.com/openclaw/beam">GitHub ↗</a>
+    </nav>
+  </header>
+  <main id="top">
+    <section class="intro" aria-labelledby="title">
+      <h1 id="title">Take your conversation to another coding agent.</h1>
+      <p>Beam lets you choose a session, clean its history locally, and review the exact packet that goes to the next harness.</p>
+      <a class="button" href="#usage">Try Beam <span aria-hidden="true">↓</span></a>
+    </section>
+    <section class="example" aria-label="Synthetic cleaning example">
+      <div class="sample">
+        <h2>Source conversation</h2>
+        <dl><dt>User</dt><dd>Send the CSV fix to <mark>alex@example.test</mark>.</dd>
+        <dt>Agent</dt><dd>The parser now preserves quoted newlines.</dd></dl>
+      </div>
+      <div class="sample clean">
+        <h2>Reviewed packet</h2>
+        <dl><dt>User</dt><dd>Send the CSV fix to <strong>[REDACTED_EMAIL]</strong>.</dd>
+        <dt>Agent</dt><dd>The parser now preserves quoted newlines.</dd></dl>
+      </div>
+    </section>
+    <section class="use" id="usage" aria-labelledby="usage-title">
+      <div><h2 id="usage-title">Use the CLI</h2><p>Install from source with Go, then check the adapters available on your machine.</p></div>
+      <pre><code>go install github.com/openclaw/beam/cmd/beam@main
+beam doctor --json</code></pre>
+      <div><h3>Move a session</h3><p>Select a Claude session by its exact ID and inspect the file before choosing a destination.</p></div>
+      <pre><code>beam pack --from claude --session &lt;id&gt; --out task.beam.json
+beam inspect task.beam.json
+beam open task.beam.json --in codex</code></pre>
+    </section>
+    <section id="support" aria-labelledby="support-title">
+      <h2 id="support-title">Harness support</h2>
+      <p>Check <code>beam doctor --json</code> for the adapters and operations available locally. Release notes identify qualified versions and whether an adapter can export, stage a reference, or reopen a destination.</p>
+      <div class="links">
+        <a href="https://github.com/openclaw/beam/releases">Releases ↗</a>
+        <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md">Protocol design ↗</a>
+        <a href="https://github.com/openclaw/beam/blob/main/schema/packet-v2.schema.json">Packet schema ↗</a>
+      </div>
+    </section>
+  </main>
+  <footer><span>Beam</span><a href="https://github.com/openclaw/beam/blob/main/LICENSE">MIT license</a></footer>
+</body>
+</html>
