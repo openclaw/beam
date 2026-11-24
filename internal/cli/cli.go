@@ -1,0 +1,317 @@
+package cli
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"slices"
+	"strconv"
+	"time"
+
+	"github.com/openclaw/beam/internal/adapter"
+	"github.com/openclaw/beam/internal/clean"
+	"github.com/openclaw/beam/internal/packet"
+)
+
+const usage = `Usage: beam COMMAND [options]
+
+  beam capabilities [--json]                 Show CLI, packet, and adapter versions
+  beam doctor [--json]                       Probe available harness integrations
+  beam list --from HARNESS                   List local, selectable conversations
+  beam pack --from HARNESS --session ID      Write a reviewed packet (--out FILE or stdout)
+  beam clean --protocol 1                    Clean one selected history projection from stdin
+  beam inspect FILE                          Show exact packet and its digest
+  beam render FILE [--out FILE]              Render a packet as quoted Markdown
+  beam open FILE --in HARNESS                Open an independent copy or reviewed reference
+  beam push --from A --session ID --to B     Copy one selected conversation to another harness
+  beam resolve --in HARNESS --handle ID      Resolve an existing local reference
+  beam lookup --in HARNESS --operation-id ID Query a previous operation
+  beam send --in HARNESS --handle ID --message TEXT
+  beam share|handoff FILE --to ENDPOINT      Publish or release a reviewed packet
+  beam pull LINK --out FILE                  Read an authorized remote snapshot
+  beam continue LINK --message TEXT          Send a new instruction at the destination
+  beam adapter --in HARNESS                  Serve one protocol-1 request on stdin
+
+Use - for stdin or stdout. Use --json for machine receipts, --dry-run for a push
+preview, and --expect-digest SHA to send reviewed bytes. Use --adapter ID=/path
+to invoke an explicitly selected executable implementing the Beam stdio protocol.
+`
+
+func (a App) Run(ctx context.Context, args []string, in io.Reader, out, stderr io.Writer) int {
+	if len(args) == 0 || args[0] == "help" || args[0] == "--help" || args[0] == "-h" {
+		fmt.Fprint(out, usage)
+		return 0
+	}
+	if args[0] == "--version" || args[0] == "version" {
+		fmt.Fprintln(out, a.Version)
+		return 0
+	}
+	cmd, argv := args[0], args[1:]
+	jsonMode := slices.Contains(argv, "--json")
+	fail := func(err error) int {
+		if jsonMode {
+			_ = json.NewEncoder(out).Encode(adapter.Failure(err))
+		} else {
+			fmt.Fprintln(stderr, "beam:", err)
+		}
+		return adapter.ExitCode(err)
+	}
+	switch cmd {
+	case "skill-v1":
+		if a.Legacy != nil {
+			return a.Legacy(ctx, argv, in, out, stderr)
+		}
+	case "hook-notice":
+		if a.Hook != nil {
+			if len(argv) != 2 {
+				return fail(fmt.Errorf("hook-notice requires adapter and reference handle"))
+			}
+			if err := a.Hook(out, argv[0], argv[1]); err != nil {
+				return fail(err)
+			}
+			return 0
+		}
+	case "share", "pull", "handoff", "continue", "resolve":
+		local := cmd == "resolve" && (slices.Contains(argv, "--in") || hasOption(argv, "--in="))
+		if !local {
+			if a.Remote == nil {
+				return fail(adapter.Unsupported(cmd))
+			}
+			code, err := a.Remote(ctx, cmd, argv, in, out, stderr)
+			if err != nil {
+				fmt.Fprintln(stderr, "beam:", err)
+				if code == 0 {
+					code = adapter.ExitCode(err)
+				}
+			}
+			return code
+		}
+	}
+	if _, ok := optionsFor[cmd]; !ok {
+		return fail(fmt.Errorf("unknown command %q; use beam help", cmd))
+	}
+	o, err := parseOptions(cmd, argv)
+	if err != nil {
+		return fail(err)
+	}
+	reg, err := a.registry(o)
+	if err != nil {
+		return fail(err)
+	}
+	if cmd == "adapter" {
+		if err := o.require("in"); err != nil {
+			return fail(err)
+		}
+		chosen, err := a.selectAdapter(reg, o.values["in"])
+		if err != nil {
+			return fail(err)
+		}
+		code, err := adapter.Serve(ctx, chosen, in, out)
+		if err != nil {
+			return fail(err)
+		}
+		return code
+	}
+	result, err := a.execute(ctx, cmd, o, reg, in, out, stderr)
+	if err != nil {
+		return fail(err)
+	}
+	if result != nil {
+		if jsonMode {
+			env, err := adapter.Success(result)
+			if err != nil {
+				return fail(err)
+			}
+			err = json.NewEncoder(out).Encode(env)
+			if err != nil {
+				return fail(err)
+			}
+		} else {
+			enc := json.NewEncoder(out)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(result); err != nil {
+				return fail(err)
+			}
+		}
+	}
+	return 0
+}
+
+func hasOption(args []string, prefix string) bool {
+	for _, s := range args {
+		if len(s) >= len(prefix) && s[:len(prefix)] == prefix {
+			return true
+		}
+	}
+	return false
+}
+
+func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, in io.Reader, out, stderr io.Writer) (any, error) {
+	withFile := cmd == "inspect" || cmd == "render" || cmd == "open"
+	if withFile && len(o.args) != 1 {
+		return nil, fmt.Errorf("%s requires exactly one file or -", cmd)
+	}
+	if !withFile && len(o.args) != 0 {
+		return nil, fmt.Errorf("unexpected positional argument for %s", cmd)
+	}
+	switch cmd {
+	case "capabilities":
+		info := map[string]any{"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "packetVersions": []int{1, 2}, "adapters": keys(reg)}
+		if a.Legacy != nil {
+			info["skillProtocols"] = []int{1}
+		}
+		return info, nil
+	case "doctor":
+		type detected struct {
+			ID           string                `json:"id"`
+			Ready        bool                  `json:"available"`
+			Capabilities *adapter.Capabilities `json:"capabilities,omitempty"`
+			Error        *adapter.Error        `json:"error,omitempty"`
+		}
+		ids := keys(reg)
+		rows := make([]detected, len(ids))
+		done := make(chan int, len(ids))
+		for i, id := range ids {
+			go func(i int, id string) {
+				probe, cancel := context.WithTimeout(ctx, 8*time.Second)
+				defer cancel()
+				c, err := caps(probe, reg[id])
+				rows[i] = detected{ID: id, Ready: err == nil}
+				if err == nil {
+					rows[i].Capabilities = &c
+				} else {
+					rows[i].Error = adapter.Describe(err)
+				}
+				done <- i
+			}(i, id)
+		}
+		for range ids {
+			<-done
+		}
+		return map[string]any{"version": a.Version, "adapters": rows}, nil
+	case "list":
+		if err := o.require("from"); err != nil {
+			return nil, err
+		}
+		src, err := a.selectAdapter(reg, o.values["from"])
+		if err != nil {
+			return nil, err
+		}
+		limit := 50
+		if s := o.values["limit"]; s != "" {
+			limit, err = strconv.Atoi(s)
+			if err != nil || limit < 1 || limit > 200 {
+				return nil, fmt.Errorf("--limit must be between 1 and 200")
+			}
+		}
+		return call[adapter.ListResult](ctx, src, adapter.Request{Op: "list", Cursor: o.values["cursor"], Limit: limit})
+	case "clean":
+		if o.values["protocol"] != "1" {
+			return nil, adapter.Fail("unsupported_version", "never", "use clean --protocol 1")
+		}
+		data, err := adapter.ReadBounded(in, clean.MaxCandidateBytes)
+		if err != nil {
+			return nil, err
+		}
+		c, err := clean.ParseCandidate(data)
+		if err != nil {
+			return nil, err
+		}
+		p, report, err := clean.Build(c, o.clean)
+		if err != nil {
+			return nil, err
+		}
+		b, err := packet.Marshal(p)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.NewEncoder(stderr).Encode(report); err != nil {
+			return nil, err
+		}
+		return nil, save("-", b, out)
+	case "pack", "push":
+		p, b, report, err := a.pack(ctx, reg, o)
+		if err != nil {
+			return nil, err
+		}
+		if err := matchDigest(o.values["expect-digest"], b); err != nil {
+			return nil, err
+		}
+		if cmd == "pack" || o.values["dry-run"] != "" {
+			if o.values["json"] != "" {
+				result := map[string]any{"digest": packet.Digest(b), "bytes": len(b), "report": report}
+				if dst := o.values["out"]; dst != "" && dst != "-" {
+					if err := save(dst, b, out); err != nil {
+						return nil, err
+					}
+					result["path"] = dst
+				} else {
+					result["packet"] = p
+				}
+				return result, nil
+			}
+			fmt.Fprintf(stderr, "%s  %d bytes\n", packet.Digest(b), len(b))
+			return nil, save(o.values["out"], b, out)
+		}
+		if err := o.require("to"); err != nil {
+			return nil, err
+		}
+		dst, err := a.selectAdapter(reg, o.values["to"])
+		if err != nil {
+			return nil, err
+		}
+		return open(ctx, dst, p, o)
+	case "inspect", "render", "open":
+		p, b, err := inputPacket(o.args[0], in)
+		if err != nil {
+			return nil, err
+		}
+		if err := matchDigest(o.values["expect-digest"], b); err != nil {
+			return nil, err
+		}
+		if cmd == "inspect" {
+			if o.values["json"] != "" {
+				return map[string]any{"digest": packet.Digest(b), "bytes": len(b), "packet": json.RawMessage(b)}, nil
+			}
+			fmt.Fprintf(stderr, "%s  %d bytes\n", packet.Digest(b), len(b))
+			return nil, save("-", b, out)
+		}
+		if cmd == "render" {
+			return nil, save(o.values["out"], []byte(packet.Render(p)), out)
+		}
+		if err := o.require("in"); err != nil {
+			return nil, err
+		}
+		dst, err := a.selectAdapter(reg, o.values["in"])
+		if err != nil {
+			return nil, err
+		}
+		return open(ctx, dst, p, o)
+	case "send", "resolve", "lookup":
+		if err := o.require("in"); err != nil {
+			return nil, err
+		}
+		dst, err := a.selectAdapter(reg, o.values["in"])
+		if err != nil {
+			return nil, err
+		}
+		if cmd == "lookup" {
+			if err := o.require("operation-id"); err != nil {
+				return nil, err
+			}
+			return call[adapter.OpenResult](ctx, dst, adapter.Request{Op: "lookupOperation", OperationID: o.values["operation-id"]})
+		}
+		if err := o.require("handle"); err != nil {
+			return nil, err
+		}
+		if cmd == "resolve" {
+			return call[adapter.OpenResult](ctx, dst, adapter.Request{Op: "resolve", Handle: o.values["handle"]})
+		}
+		if err := o.require("message"); err != nil {
+			return nil, err
+		}
+		return call[adapter.SendResult](ctx, dst, adapter.Request{Op: "send", Handle: o.values["handle"], Instruction: o.values["message"], RequestID: pick(o.values["request-id"])})
+	}
+	return nil, adapter.Unsupported(cmd)
+}
