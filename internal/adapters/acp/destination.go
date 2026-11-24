@@ -28,7 +28,9 @@ func (a Adapter) store() (staged.Store, error) {
 	}
 	digest := sha256.Sum256([]byte(a.Agent + "\x00" + dir))
 	return staged.Store{Adapter: "acp-" + hex.EncodeToString(digest[:12]), Root: a.StateRoot,
-		NextAction: func(string) string { return "Submit a new instruction to acpx:" + a.Agent + " using this handle" }}, nil
+		NextAction: func(dir string) string {
+			return "Use the reviewed reference at " + filepath.Join(dir, staged.Artifact) + " in a new " + a.Agent + " session"
+		}}, nil
 }
 
 type binding struct {
@@ -252,7 +254,7 @@ func (a Adapter) send(ctx context.Context, r adapter.Request) (adapter.SendResul
 		}
 		b = binding{response.Record, response.Session}
 	}
-	raw, err := a.run(ctx, message, adapter.MaxResponseBytes, "--prompt-retries", "0", "--format", "json", "--json-strict", a.Agent, "prompt", "-s", name, "--file", "-")
+	raw, err := a.run(ctx, message, adapter.MaxResponseBytes, "--prompt-retries", "0", "--format", "json", "--json-strict", a.Agent, "prompt", "-s", name, "--expect-record", b.Record, "--file", "-")
 	if err != nil || !promptCompleted(raw, b.Session) {
 		return result, uncertain()
 	}

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -29,10 +30,12 @@ var agentName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`)
 var versionSupported = regexp.MustCompile(`^0\.22\.[0-9]+$`)
 
 func (a Adapter) cwd() (string, error) {
-	if a.Cwd == "" {
-		return os.Getwd()
+	dir, err := filepath.Abs(a.Cwd)
+	if err != nil {
+		return "", err
 	}
-	return filepath.Abs(a.Cwd)
+	// ACPX compares project paths using the operating system's working directory.
+	return filepath.EvalSymlinks(dir)
 }
 
 func (a Adapter) executable() (string, error) {
@@ -96,22 +99,33 @@ func (a Adapter) run(ctx context.Context, input string, max int, args ...string)
 	return out.buf.Bytes(), nil
 }
 
-func (a Adapter) capabilities(ctx context.Context) adapter.Capabilities {
-	caps := adapter.Capabilities{Protocol: 1, Adapter: "acpx", Version: "unavailable", Recovery: "manual", Source: []string{}, Destination: []string{}}
+func (a Adapter) version(ctx context.Context) string {
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
 	out, err := a.run(ctx, "", 1024, "--version")
-	if err != nil {
-		return caps
-	}
 	version := strings.TrimSpace(string(out))
-	if !versionSupported.MatchString(version) || !agentName.MatchString(a.Agent) {
+	if err != nil || !versionSupported.MatchString(version) || !agentName.MatchString(a.Agent) {
+		return "unavailable"
+	}
+	return version
+}
+
+func (a Adapter) capabilities(ctx context.Context) adapter.Capabilities {
+	caps := adapter.Capabilities{Protocol: 1, Adapter: "acpx", Version: a.version(ctx), Recovery: "manual", Source: []string{}, Destination: []string{}}
+	if caps.Version == "unavailable" {
 		return caps
 	}
-	caps.Version = version
 	caps.Source = []string{"list", "read"}
-	caps.Destination = []string{"stageReference", "resolve", "send"}
+	caps.Destination = []string{"stageReference", "resolve"}
 	caps.Recovery = "lookupByOperationId"
+	// A name can be reassigned by another client between lookup and dispatch.
+	// Only acpx can compare the selected record before admitting the prompt.
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+	help, err := a.run(ctx, "", 64*1024, a.Agent, "prompt", "--help")
+	if err == nil && slices.Contains(strings.Fields(string(help)), "--expect-record") {
+		caps.Destination = append(caps.Destination, "send")
+	}
 	return caps
 }
 
@@ -125,8 +139,12 @@ func (a Adapter) Call(ctx context.Context, r adapter.Request) (any, error) {
 	// A local staged reference and its receipt remain readable while the native
 	// executable is offline. Dispatch and source reads require a qualified CLI.
 	switch r.Op {
-	case "stageReference", "list", "read", "send":
-		if a.capabilities(ctx).Version == "unavailable" {
+	case "send":
+		if !slices.Contains(a.capabilities(ctx).Destination, "send") {
+			return nil, adapter.Fail("unsupported_operation", "never", "sending requires an acpx CLI with prompt --expect-record; the reviewed reference can be opened manually")
+		}
+	case "stageReference", "list", "read":
+		if a.version(ctx) == "unavailable" {
 			return nil, adapter.Fail("unsupported_version", "never", "install a supported acpx 0.22 release and select a configured agent")
 		}
 	}

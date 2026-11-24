@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -75,6 +76,39 @@ func acpxFixture(t *testing.T) (Adapter, string, []string) {
 	return Adapter{Agent: "fixture", Binary: bin, Cwd: project, StateRoot: filepath.Join(root, "refs"), env: env}, project, env
 }
 
+func boundSends(t *testing.T, a Adapter) bool {
+	t.Helper()
+	supported := slices.Contains(a.capabilities(t.Context()).Destination, "send")
+	if os.Getenv("BEAM_TEST_ACPX_BOUND_SEND") == "1" && !supported {
+		t.Fatal("the tested acpx should support exact-record sends")
+	}
+	return supported
+}
+
+func seedNativeConversation(t *testing.T, a Adapter, instruction string) string {
+	t.Helper()
+	raw, err := a.run(t.Context(), "", 65536, "--format", "json", "fixture", "sessions", "ensure", "--name", "native-seed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var created struct {
+		ID      string `json:"acpxRecordId"`
+		Created bool
+	}
+	if err := json.Unmarshal(raw, &created); err != nil || created.ID == "" || !created.Created {
+		t.Fatal("native seed creation")
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = a.run(ctx, "", 8192, "--format", "quiet", "fixture", "sessions", "close", "native-seed")
+	})
+	if _, err := a.run(t.Context(), instruction, 65536, "--format", "quiet", "fixture", "prompt", "-s", "native-seed", "--file", "-"); err != nil {
+		t.Fatal(err)
+	}
+	return created.ID
+}
+
 func TestReleasedACPXInterop(t *testing.T) {
 	a, project, _ := acpxFixture(t)
 	ctx := t.Context()
@@ -103,6 +137,22 @@ func TestReleasedACPXInterop(t *testing.T) {
 		_, _ = a.run(c, "", 8192, "--format", "quiet", "fixture", "sessions", "close", "beam-"+stage.Handle)
 	})
 	send := adapter.Request{Op: "send", Handle: stage.Handle, RequestID: "first-send", Instruction: "fresh instruction"}
+	if !boundSends(t, a) {
+		_, err := a.Call(ctx, send)
+		if err == nil || adapter.Describe(err).Code != "unsupported_operation" {
+			t.Fatalf("unguarded acpx send: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(project, "fixture-acp.ndjson")); !os.IsNotExist(err) {
+			t.Fatal("unsupported send started a peer")
+		}
+		id := seedNativeConversation(t, a, "explicit native prompt")
+		read := call(adapter.Request{Op: "read", Selection: id}).(adapter.ReadResult)
+		text, _ := json.Marshal(read.Items)
+		if read.Completeness != "partial" || strings.Contains(string(text), "private-fixture") || !strings.Contains(string(text), "visible synthetic response") {
+			t.Fatal(string(text))
+		}
+		return
+	}
 	sent := call(send).(adapter.SendResult)
 	if sent.State != "completed" {
 		t.Fatal(sent)
@@ -170,7 +220,7 @@ func TestReleasedACPXInterop(t *testing.T) {
 	if strings.Count(string(log), `"method":"session/prompt"`) != 2 {
 		t.Fatal("cancelled prompt was replayed")
 	}
-	if os.Getenv("BEAM_TEST_ACPX_TARGETED_CANCEL") == "1" && !strings.Contains(string(log), `"method":"session/cancel"`) {
+	if !strings.Contains(string(log), `"method":"session/cancel"`) {
 		t.Fatal("cancel was not delivered to the active prompt")
 	}
 	if resolved := call(adapter.Request{Op: "resolve", Handle: stage.Handle}).(adapter.OpenResult); resolved.State != "needs_reconciliation" {
@@ -226,26 +276,45 @@ func TestBeamBinaryACPX(t *testing.T) {
 		defer done()
 		_, _ = a.run(c, "", 8192, "--format", "quiet", "fixture", "sessions", "close", "beam-"+stage.Handle)
 	})
-	var sent adapter.SendResult
-	for range 2 {
-		invoke("", &sent, "send", "--in", "acpx:fixture", "--handle", stage.Handle, "--request-id", "binary-first", "--message", "binary fresh instruction")
-		if sent.State != "completed" {
-			t.Fatal(sent)
+	var id string
+	if boundSends(t, a) {
+		var sent adapter.SendResult
+		for range 2 {
+			invoke("", &sent, "send", "--in", "acpx:fixture", "--handle", stage.Handle, "--request-id", "binary-first", "--message", "binary fresh instruction")
+			if sent.State != "completed" {
+				t.Fatal(sent)
+			}
 		}
+		var bound adapter.OpenResult
+		invoke("", &bound, "resolve", "--in", "acpx:fixture", "--handle", stage.Handle)
+		if bound.State != "ready" {
+			t.Fatal(bound)
+		}
+		id = bound.NativeSession
+	} else {
+		cmd := exec.CommandContext(t.Context(), name, "send", "--in", "acpx:fixture", "--handle", stage.Handle, "--request-id", "binary-first", "--message", "binary fresh instruction", "--json")
+		cmd.Dir, cmd.Env = project, env
+		out, err := cmd.Output()
+		var reply adapter.Envelope
+		if err == nil || json.Unmarshal(out, &reply) != nil || reply.Error == nil || reply.Error.Code != "unsupported_operation" {
+			t.Fatal("unguarded binary send", err, string(out))
+		}
+		if _, err := os.Stat(trace); !os.IsNotExist(err) {
+			t.Fatal("unsupported binary send started a peer")
+		}
+		id = seedNativeConversation(t, a, "binary fresh instruction")
 	}
-	var bound adapter.OpenResult
-	invoke("", &bound, "resolve", "--in", "acpx:fixture", "--handle", stage.Handle)
 	var list adapter.ListResult
 	invoke("", &list, "list", "--from", "acpx:fixture")
-	if bound.State != "ready" || len(list.Entries) != 1 || list.Entries[0].Selection != bound.NativeSession {
-		t.Fatal(bound, list)
+	if len(list.Entries) != 1 || list.Entries[0].Selection != id {
+		t.Fatal(list)
 	}
 	before, err := os.ReadFile(trace)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var packed packet.Packet
-	invoke("", &packed, "pack", "--from", "acp:fixture", "--session", bound.NativeSession)
+	invoke("", &packed, "pack", "--from", "acp:fixture", "--session", id)
 	after, err := os.ReadFile(trace)
 	if err != nil {
 		t.Fatal(err)
