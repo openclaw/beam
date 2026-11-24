@@ -35,3 +35,5 @@ changelog:
   disable: true
 release:
   disable: true
+snapshot:
+  version_template: "{{ .Env.BEAM_VERSION }}"
