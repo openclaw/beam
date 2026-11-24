@@ -58,6 +58,7 @@ jobs:
           path: |
             release-assets/beam-clean_*.gz
             release-assets/cleaners.json
+            release-assets/CLEANER-NOTICE.txt
           if-no-files-found: error
   harnesses:
     needs: build

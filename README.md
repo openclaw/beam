@@ -38,7 +38,7 @@ The source and destination negotiate operations independently. Native destinatio
 
 The [portable Beam skill](integrations/skill/SKILL.md) gives an agent the same review, transfer, and explicit-send workflow.
 
-Hosts that only need local cleaning can embed the matching `beam-clean` executable. Each release's `cleaners.json` lists the raw gzip, compressed and executable sizes, and both SHA-256 digests for each platform. Invoke `beam-clean clean --protocol 1` with a candidate on stdin. It uses the same implementation as the CLI, writes packet bytes to stdout, and writes the omission counts to stderr.
+Hosts that only need local cleaning can embed the matching `beam-clean` executable with its [redistribution notices](CLEANER-NOTICE.txt). Each release's `cleaners.json` lists the raw gzip, compressed and executable sizes, and both SHA-256 digests for each platform. Invoke `beam-clean clean --protocol 1` with a candidate on stdin. It uses the same implementation as the CLI, writes packet bytes to stdout, and writes the omission counts to stderr.
 
 The [schema directory](schema) defines the portable packet, cleaner input and adapter envelopes. The [conformance vectors](conformance/packet) exercise the shared Go and TypeScript packet boundary. The [design proposal](docs/standalone-beam.md) describes the rollout and receiver contracts. The original OpenClaw sender is available in [agent-skills](https://github.com/openclaw/agent-skills/tree/v0.7.0/skills/beam).
 

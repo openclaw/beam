@@ -79,6 +79,9 @@ def package(dist, version, destination):
     packages = {}
     cleaners = {}
     license_text = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
+    cleaner_notice = destination / "CLEANER-NOTICE.txt"
+    shutil.copyfile(Path(__file__).resolve().parents[1] / cleaner_notice.name, cleaner_notice)
+    files.append(cleaner_notice)
     for go_os, platform in PLATFORMS.items():
         for go_arch, arch in ARCHITECTURES.items():
             extension, executable = ("zip", "beam.exe") if go_os == "windows" else ("tar.gz", "beam")
