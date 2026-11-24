@@ -1,0 +1,46 @@
+{
+  "v2": [
+    {
+      "tuple": [
+        "codex",
+        "fixture-home",
+        "session-1",
+        ""
+      ],
+      "id": "38a004e5465e517b0b3122f3100fed94"
+    },
+    {
+      "tuple": [
+        "claude",
+        "work tree",
+        "café",
+        "branch/🦊"
+      ],
+      "id": "3eecab73192036fa67ed86b5de41d225"
+    },
+    {
+      "tuple": [
+        "claude",
+        "work tree",
+        "café",
+        "branch/🦊"
+      ],
+      "id": "8aed7020d78009290691fca73706d52a"
+    }
+  ],
+  "v1CLI": [
+    {
+      "source": "codex",
+      "identity": "session-1",
+      "id": "391f442b59834258ecfe5801b6e842e2"
+    }
+  ],
+  "v1Mirror": [
+    {
+      "catalogId": "codex",
+      "hostId": "local",
+      "threadId": "session-1",
+      "id": "9ff99c25710ea53672550810497558c8"
+    }
+  ]
+}

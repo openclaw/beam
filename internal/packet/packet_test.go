@@ -121,3 +121,36 @@ func TestSharedValidatorVectors(t *testing.T) {
 		})
 	}
 }
+
+func TestIdentityVectors(t *testing.T) {
+	data, err := os.ReadFile("../../conformance/packet/identity.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vectors struct {
+		V2 []struct {
+			Tuple [4]string
+			ID    string
+		}
+		V1CLI    []struct{ Source, Identity, ID string }
+		V1Mirror []struct{ CatalogID, HostID, ThreadID, ID string }
+	}
+	if err = json.Unmarshal(data, &vectors); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range vectors.V2 {
+		if SourceID(v.Tuple[0], v.Tuple[1], v.Tuple[2], v.Tuple[3]) != v.ID {
+			t.Error("v2 identity changed")
+		}
+	}
+	for _, v := range vectors.V1CLI {
+		if LegacySourceID(v.Source, v.Identity) != v.ID {
+			t.Error("v1 CLI identity changed")
+		}
+	}
+	for _, v := range vectors.V1Mirror {
+		if LegacyMirrorID(v.CatalogID, v.HostID, v.ThreadID) != v.ID {
+			t.Error("v1 mirror identity changed")
+		}
+	}
+}

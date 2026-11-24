@@ -1,6 +1,8 @@
 package packet
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -63,4 +65,16 @@ func V1Projection(p Packet) ([]byte, error) {
 		return nil, errors.New("v1 projection exceeds 56 KiB")
 	}
 	return b, err
+}
+
+// LegacySourceID preserves links produced by the released agent-skills CLI.
+func LegacySourceID(source, identity string) string {
+	h := sha256.Sum256([]byte(source + ":" + identity))
+	return hex.EncodeToString(h[:16])
+}
+
+// LegacyMirrorID preserves snapshots from an existing OpenClaw catalog mirror.
+func LegacyMirrorID(catalog, host, thread string) string {
+	h := sha256.Sum256([]byte(catalog + "\x00" + host + "\x00" + thread))
+	return hex.EncodeToString(h[:16])
 }
