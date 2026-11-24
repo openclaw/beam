@@ -23,22 +23,21 @@ func DecodeClosed(data []byte, maxBytes int, dest any) error {
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
-	if err := checkValue(d, t.Elem(), false); err != nil {
+	if err := checkValue(d, reflect.ValueOf(dest).Elem(), false); err != nil {
 		return err
 	}
 	if _, err := d.Token(); err != io.EOF {
 		return errors.New("unexpected trailing JSON data")
 	}
-	if err := json.Unmarshal(data, dest); err != nil {
-		return errors.New("invalid JSON value")
-	}
 	return nil
 }
 
-func checkValue(d *json.Decoder, t reflect.Type, nonempty bool) error {
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
+func checkValue(d *json.Decoder, v reflect.Value, nonempty bool) error {
+	if v.Kind() == reflect.Pointer {
+		v.Set(reflect.New(v.Type().Elem()))
+		v = v.Elem()
 	}
+	t := v.Type()
 	token, err := d.Token()
 	if err != nil || token == nil {
 		return errors.New("missing or invalid JSON value")
@@ -66,7 +65,7 @@ func checkValue(d *json.Decoder, t reflect.Type, nonempty bool) error {
 				return errors.New("unknown or duplicate JSON member")
 			}
 			delete(fields, name)
-			if err := checkValue(d, f.Type, f.Tag.Get("wire") == "nonempty"); err != nil {
+			if err := checkValue(d, v.FieldByIndex(f.Index), f.Tag.Get("wire") == "nonempty"); err != nil {
 				return err
 			}
 		}
@@ -83,27 +82,40 @@ func checkValue(d *json.Decoder, t reflect.Type, nonempty bool) error {
 		if token != json.Delim('[') {
 			return errors.New("expected JSON array")
 		}
+		v.Set(reflect.MakeSlice(t, 0, 0))
 		for d.More() {
-			if err := checkValue(d, t.Elem(), false); err != nil {
+			item := reflect.New(t.Elem()).Elem()
+			if err := checkValue(d, item, false); err != nil {
 				return err
 			}
+			v.Set(reflect.Append(v, item))
 		}
 		token, err = d.Token()
 		if err != nil || token != json.Delim(']') {
 			return errors.New("invalid JSON array")
 		}
 	case reflect.String:
-		if s, ok := token.(string); !ok || (nonempty && s == "") {
+		s, ok := token.(string)
+		if !ok || (nonempty && s == "") {
 			return errors.New("expected JSON string")
 		}
+		v.SetString(s)
 	case reflect.Bool:
-		if _, ok := token.(bool); !ok {
+		b, ok := token.(bool)
+		if !ok {
 			return errors.New("expected JSON boolean")
 		}
+		v.SetBool(b)
 	case reflect.Int:
-		if _, ok := token.(json.Number); !ok {
+		n, ok := token.(json.Number)
+		if !ok {
 			return errors.New("expected JSON integer")
 		}
+		x, err := n.Float64()
+		if err != nil || x != float64(int64(x)) || v.OverflowInt(int64(x)) {
+			return errors.New("expected JSON integer")
+		}
+		v.SetInt(int64(x))
 	default:
 		return errors.New("unsupported JSON shape")
 	}

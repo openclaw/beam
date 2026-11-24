@@ -2,6 +2,7 @@ package packet
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -77,7 +78,7 @@ func TestDigestAndRender(t *testing.T) {
 		t.Fatalf("golden bytes changed: %v", err)
 	}
 	golden, err := os.ReadFile("../../conformance/packet/example.sha256")
-	if err != nil || Digest(raw) != strings.TrimSpace(string(golden)) {
+	if err != nil || Digest(raw) != "sha256:"+strings.TrimSpace(string(golden)) {
 		t.Fatalf("golden digest: %v", err)
 	}
 	if got := SourceID("codex", "fixture-home", "session-1", ""); got != p.BeamID {
@@ -89,5 +90,34 @@ func TestDigestAndRender(t *testing.T) {
 	p.Items[0].Text = "a\r\n![image](https://example.test)\n> quit"
 	if !strings.Contains(Render(p), ">     ![image]") || strings.Contains(Render(p), "\r") {
 		t.Fatal("reference contains an active embedded image or carriage return")
+	}
+}
+
+func TestSharedValidatorVectors(t *testing.T) {
+	raw, err := os.ReadFile("../../conformance/packet/example.beam.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	vectors, err := os.ReadFile("../../conformance/packet/validation.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tests []struct {
+		Name, From, To string
+		Valid          bool
+	}
+	if err = json.Unmarshal(vectors, &tests); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			if !bytes.Contains(raw, []byte(tc.From)) {
+				t.Fatal("fixture no longer contains input")
+			}
+			_, err := Parse(bytes.Replace(raw, []byte(tc.From), []byte(tc.To), 1))
+			if (err == nil) != tc.Valid {
+				t.Fatalf("valid=%v error=%v", tc.Valid, err)
+			}
+		})
 	}
 }

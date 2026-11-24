@@ -66,7 +66,7 @@ func SourceID(adapter, sourceHome, nativeSession, branch string) string {
 
 func Digest(data []byte) string {
 	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:])
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 // Clip limits UTF-16 code units while keeping complete Unicode scalars.
@@ -83,8 +83,14 @@ func Clip(s string, units int) string {
 	return s
 }
 
+func wireSpace(r rune) bool {
+	// ECMAScript whitespace defines JSON Schema regex \s; its two differences
+	// from Unicode White_Space matter for Go/TypeScript validator parity.
+	return r == '\ufeff' || (r != '\u0085' && unicode.IsSpace(r))
+}
+
 func validText(s string, limit int) bool {
-	return utf8.ValidString(s) && strings.TrimSpace(s) != "" && Clip(s, limit) == s
+	return utf8.ValidString(s) && strings.TrimFunc(s, wireSpace) != "" && Clip(s, limit) == s
 }
 
 func (p Packet) Validate() error {
@@ -101,7 +107,7 @@ func (p Packet) Validate() error {
 		return errors.New("invalid packet timestamp")
 	}
 	if m := p.SourceModel; m != nil {
-		if len(m.Provider) > 64 || !identifier.MatchString(m.Provider) || !validText(m.Model, 256) || strings.IndexFunc(m.Model, unicode.IsSpace) >= 0 {
+		if len(m.Provider) > 64 || !identifier.MatchString(m.Provider) || !validText(m.Model, 256) || strings.IndexFunc(m.Model, wireSpace) >= 0 {
 			return errors.New("invalid model hint")
 		}
 	}

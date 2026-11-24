@@ -1,0 +1,152 @@
+[
+  {
+    "name": "integer value with decimal encoding",
+    "from": "\"version\":2",
+    "to": "\"version\":2.0",
+    "valid": true
+  },
+  {
+    "name": "unsupported version",
+    "from": "\"version\":2",
+    "to": "\"version\":1",
+    "valid": false
+  },
+  {
+    "name": "duplicate key",
+    "from": "\"source\":\"codex\"",
+    "to": "\"source\":\"codex\",\"source\":\"codex\"",
+    "valid": false
+  },
+  {
+    "name": "escaped duplicate key",
+    "from": "\"type\":\"userMessage\"",
+    "to": "\"type\":\"userMessage\",\"\\u0074ype\":\"userMessage\"",
+    "valid": false
+  },
+  {
+    "name": "missing required field",
+    "from": "\"completed\":false,",
+    "to": "",
+    "valid": false
+  },
+  {
+    "name": "null optional member",
+    "from": "\"speaker\":\"p1\"",
+    "to": "\"speaker\":null",
+    "valid": false
+  },
+  {
+    "name": "empty optional alias",
+    "from": "\"speaker\":\"p1\"",
+    "to": "\"speaker\":\"\"",
+    "valid": false
+  },
+  {
+    "name": "alias valid upper limit",
+    "from": "\"speaker\":\"p1\"",
+    "to": "\"speaker\":\"p200\"",
+    "valid": true
+  },
+  {
+    "name": "alias out of range",
+    "from": "\"speaker\":\"p1\"",
+    "to": "\"speaker\":\"p201\"",
+    "valid": false
+  },
+  {
+    "name": "alias on assistant",
+    "from": "\"type\":\"userMessage\"",
+    "to": "\"type\":\"agentMessage\"",
+    "valid": false
+  },
+  {
+    "name": "non-user receives no alias",
+    "from": "\"type\":\"userMessage\"",
+    "to": "\"type\":\"other\"",
+    "valid": false
+  },
+  {
+    "name": "lone low surrogate",
+    "from": "CSV importer",
+    "to": "\\udfff",
+    "valid": false
+  },
+  {
+    "name": "lone high surrogate",
+    "from": "CSV importer",
+    "to": "\\ud800",
+    "valid": false
+  },
+  {
+    "name": "valid escaped astral scalar",
+    "from": "CSV importer",
+    "to": "\\ud83e\\udd8a",
+    "valid": true
+  },
+  {
+    "name": "escaped mention of invalid surrogate",
+    "from": "CSV importer",
+    "to": "\\\\uD800",
+    "valid": true
+  },
+  {
+    "name": "invalid calendar",
+    "from": "2024-02-29",
+    "to": "2023-02-29",
+    "valid": false
+  },
+  {
+    "name": "invalid offset",
+    "from": "03Z",
+    "to": "03+24:00",
+    "valid": false
+  },
+  {
+    "name": "tab identifier",
+    "from": "\"source\":\"codex\"",
+    "to": "\"source\":\"codex\\n\"",
+    "valid": false
+  },
+  {
+    "name": "title no visible text",
+    "from": "CSV importer",
+    "to": "\\ufeff",
+    "valid": false
+  },
+  {
+    "name": "ECMA whitespace parity",
+    "from": "CSV importer",
+    "to": "\\u0085",
+    "valid": true
+  },
+  {
+    "name": "title astral exact maximum",
+    "from": "CSV importer",
+    "to": "🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊",
+    "valid": true
+  },
+  {
+    "name": "title astral over maximum",
+    "from": "CSV importer",
+    "to": "🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊🦊",
+    "valid": false
+  },
+  {
+    "name": "empty model hint",
+    "from": "\"completed\":false,",
+    "to": "\"completed\":false,\"sourceModel\":{},",
+    "valid": false
+  },
+  {
+    "name": "nested unknown",
+    "from": "\"completed\":false,",
+    "to": "\"completed\":false,\"sourceModel\":{\"provider\":\"openai\",\"model\":\"test\",\"key\":\"private\"},",
+    "valid": false
+  },
+  {
+    "name": "legacy control rejected",
+    "from": "\"completed\":false,",
+    "to": "\"completed\":false,\"hookEvent\":\"Stop\",",
+    "valid": false
+  }
+]

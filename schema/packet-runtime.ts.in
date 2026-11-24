@@ -1,0 +1,49 @@
+export const BEAM_PACKET_ABI = 2;
+const MAX_PACKET_BYTES = 56 * 1024;
+
+function record(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isInstant(text: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])/.exec(text);
+  if (!m) return false;
+  const year = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1];
+}
+
+// JSON.parse has already checked syntax. Walk the raw string tokens remaining
+// after decoding to catch duplicate (including escaped) keys and lone surrogates.
+function distinctKeysAndScalars(text: string): boolean {
+  const stack: (Set<string> | undefined)[] = [];
+  const tokens = /"(?:[^"\\]|\\.)*"|[{}\[\]]/g;
+  for (const token of text.matchAll(tokens)) {
+    const value = token[0];
+    if (value === "{") { stack.push(new Set()); continue; }
+    if (value === "[") { stack.push(undefined); continue; }
+    if (value === "}" || value === "]") { stack.pop(); continue; }
+    const decoded: string = JSON.parse(value);
+    if (/[\uD800-\uDFFF]/u.test(decoded)) return false;
+    let at = token.index! + value.length;
+    while (at < text.length && /[ \t\n\r]/.test(text[at])) at++;
+    if (text[at] !== ":") continue;
+    const keys = stack[stack.length - 1];
+    if (!keys || keys.has(decoded)) return false;
+    keys.add(decoded);
+  }
+  return true;
+}
+
+export function parseBeamPacket(bytes: Uint8Array): BeamPacket {
+  if (bytes.byteLength > MAX_PACKET_BYTES) throw new Error("Beam packet exceeds 56 KiB");
+  try {
+    const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes);
+    const value: unknown = JSON.parse(text);
+    if (distinctKeysAndScalars(text) && conforms(value)) return value;
+  } catch {
+    // JSON.parse error strings may contain transcript text. Keep it out of diagnostics.
+  }
+  throw new Error("invalid Beam v2 packet");
+}
