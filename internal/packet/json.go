@@ -7,6 +7,7 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -34,6 +35,44 @@ func DecodeClosed(data []byte, maxBytes int, dest any) error {
 	return nil
 }
 
+type jsonField struct {
+	index    []int
+	slot     int
+	required bool
+	nonempty bool
+}
+
+type structFields struct {
+	byName map[string]jsonField
+	slots  int
+}
+
+// Destination types supply cache keys. Keep seen flags local to each object so
+// duplicate detection cannot affect a sibling object or a concurrent decode.
+var fieldCache sync.Map // reflect.Type -> *structFields
+
+func fieldsFor(t reflect.Type) *structFields {
+	if cached, ok := fieldCache.Load(t); ok {
+		return cached.(*structFields)
+	}
+	visible := reflect.VisibleFields(t)
+	layout := &structFields{byName: make(map[string]jsonField, len(visible)), slots: len(visible)}
+	for i, f := range visible {
+		tag := f.Tag.Get("json")
+		name, _, _ := strings.Cut(tag, ",")
+		if name != "" && name != "-" {
+			layout.byName[name] = jsonField{
+				index:    f.Index,
+				slot:     i,
+				required: !strings.HasSuffix(tag, ",omitempty"),
+				nonempty: f.Tag.Get("wire") == "nonempty",
+			}
+		}
+	}
+	cached, _ := fieldCache.LoadOrStore(t, layout)
+	return cached.(*structFields)
+}
+
 func checkValue(d *json.Decoder, v reflect.Value, nonempty bool) error {
 	if v.Kind() == reflect.Pointer {
 		v.Set(reflect.New(v.Type().Elem()))
@@ -49,30 +88,25 @@ func checkValue(d *json.Decoder, v reflect.Value, nonempty bool) error {
 		if token != json.Delim('{') {
 			return errors.New("expected JSON object")
 		}
-		fields := make(map[string]reflect.StructField, t.NumField())
-		for _, f := range reflect.VisibleFields(t) {
-			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
-			if name != "" && name != "-" {
-				fields[name] = f
-			}
-		}
+		fields := fieldsFor(t)
+		seen := make([]bool, fields.slots)
 		for d.More() {
 			key, err := d.Token()
 			if err != nil {
 				return errors.New("invalid JSON member")
 			}
 			name, _ := key.(string)
-			f, ok := fields[name]
-			if !ok {
+			f, ok := fields.byName[name]
+			if !ok || seen[f.slot] {
 				return errors.New("unknown or duplicate JSON member")
 			}
-			delete(fields, name)
-			if err := checkValue(d, v.FieldByIndex(f.Index), f.Tag.Get("wire") == "nonempty"); err != nil {
+			seen[f.slot] = true
+			if err := checkValue(d, v.FieldByIndex(f.index), f.nonempty); err != nil {
 				return err
 			}
 		}
-		for _, f := range fields {
-			if !strings.HasSuffix(f.Tag.Get("json"), ",omitempty") {
+		for _, f := range fields.byName {
+			if f.required && !seen[f.slot] {
 				return errors.New("missing required JSON member")
 			}
 		}

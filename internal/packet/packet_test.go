@@ -4,9 +4,39 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestDecodeClosedConcurrentObjects(t *testing.T) {
+	type item struct {
+		Name    string  `json:"name" wire:"nonempty"`
+		Enabled bool    `json:"enabled"`
+		Note    *string `json:"note,omitempty"`
+	}
+	for i := range 12 {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+			name := strconv.Itoa(i)
+			data := []byte(`[{"name":"` + name + `","enabled":false},{"enabled":true,"note":"kept","name":"second"}]`)
+			var items []item
+			for range 10 {
+				if err := DecodeClosed(data, MaxBytes, &items); err != nil {
+					t.Fatal(err)
+				}
+				if len(items) != 2 || items[0].Name != name || items[0].Enabled || items[0].Note != nil || !items[1].Enabled || items[1].Note == nil || *items[1].Note != "kept" {
+					t.Fatal("decoded fields escaped their object", items)
+				}
+				// A duplicate in the second object must not replace the earlier result.
+				prior := &items[0]
+				if err := DecodeClosed([]byte(`[{"name":"ok","enabled":false},{"name":"a","enabled":false,"enabled":true}]`), MaxBytes, &items); err == nil || len(items) != 2 || &items[0] != prior {
+					t.Fatal("failed decode changed the destination")
+				}
+			}
+		})
+	}
+}
 
 const example = `{"version":2,"beamId":"0123456789abcdef0123456789abcdef","source":"codex","title":"Example","updatedAt":"2024-02-29T01:02:03Z","completed":false,"items":[{"type":"userMessage","text":"Hi","speaker":"p1"}]}`
 
