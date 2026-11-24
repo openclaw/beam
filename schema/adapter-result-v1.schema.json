@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Beam adapter protocol 1 result",
+  "description": "The inner result of a successful machine response. Select the definition matching the operation in the request. Error envelopes use cli-v1.schema.json.",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/capabilities"
+    },
+    {
+      "$ref": "#/$defs/list"
+    },
+    {
+      "$ref": "#/$defs/read"
+    },
+    {
+      "$ref": "#/$defs/lookupOperation"
+    },
+    {
+      "$ref": "#/$defs/send"
+    }
+  ],
+  "$defs": {
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "adapter",
+        "version",
+        "source",
+        "destination",
+        "recovery"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 1
+        },
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "list",
+              "read"
+            ]
+          }
+        },
+        "destination": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "stageReference",
+              "openCopy",
+              "resolve",
+              "send"
+            ]
+          }
+        },
+        "recovery": {
+          "enum": [
+            "manual",
+            "lookupByOperationId"
+          ]
+        }
+      }
+    },
+    "list": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entries"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "selection",
+              "title"
+            ],
+            "properties": {
+              "selection": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "read": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "origin",
+        "title",
+        "updatedAt",
+        "completed",
+        "items",
+        "completeness"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/source"
+        },
+        "origin": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/origin"
+        },
+        "branch": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/branch"
+        },
+        "title": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/title"
+        },
+        "updatedAt": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/updatedAt"
+        },
+        "completed": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/completed"
+        },
+        "sourceModel": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/sourceModel"
+        },
+        "items": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/items"
+        },
+        "completeness": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/completeness"
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "openCopy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "ready",
+            "staged",
+            "manual",
+            "needs_reconciliation"
+          ]
+        },
+        "handle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nativeSession": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nextAction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "state": {
+              "const": "ready"
+            }
+          },
+          "required": [
+            "handle",
+            "nativeSession"
+          ]
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "staged"
+            }
+          },
+          "required": [
+            "handle",
+            "nextAction"
+          ]
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "manual"
+            }
+          },
+          "required": [
+            "artifact",
+            "nextAction"
+          ]
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "needs_reconciliation"
+            }
+          },
+          "required": [
+            "nextAction"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "operationId"
+              ]
+            },
+            {
+              "required": [
+                "handle"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "stageReference": {
+      "$ref": "#/$defs/openCopy"
+    },
+    "resolve": {
+      "$ref": "#/$defs/openCopy"
+    },
+    "lookupOperation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/openCopy"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "pending",
+                "unknown"
+              ]
+            },
+            "operationId": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "send": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "requestId",
+        "handle"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "accepted",
+            "completed"
+          ]
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "handle": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

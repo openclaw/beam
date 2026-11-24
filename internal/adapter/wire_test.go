@@ -47,6 +47,24 @@ func TestMachineReadAndErrors(t *testing.T) {
 		t.Fatal(result, err)
 	}
 }
+
+func TestRejectIncompleteOrMismatchedReceipts(t *testing.T) {
+	for _, test := range []struct{ op, value string }{
+		{"list", `null`}, {"list", `{"entries":null}`}, {"list", `{"Entries":[]}`},
+		{"read", `{"items":[]}`}, {"openCopy", `{"state":"ready","handle":"h"}`},
+		{"send", `{"state":"pending","requestId":"r","handle":"h"}`},
+		{"resolve", `{"state":"unknown"}`},
+	} {
+		raw := fmt.Sprintf(`{"protocol":1,"ok":true,"result":%s}`, test.value)
+		if _, err := DecodeResult([]byte(raw), test.op); err == nil {
+			t.Errorf("accepted invalid %s response %s", test.op, test.value)
+		}
+	}
+	env, err := Success(ListResult{})
+	if err != nil || string(env.Result) != `{"entries":[]}` {
+		t.Fatal(env, err)
+	}
+}
 func TestMain(m *testing.M) {
 	switch os.Getenv("BEAM_TEST_EXTERNAL_MODE") {
 	case "bad":

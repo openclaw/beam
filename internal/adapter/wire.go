@@ -193,12 +193,13 @@ func DecodeResult(data []byte, op string) (any, error) {
 		return nil, Fail("unsupported_version", "never", "unsupported adapter response protocol")
 	}
 	if !env.OK {
-		if env.Error == nil || env.Error.Code == "" || env.Error.Message == "" || len(env.Result) > 0 {
+		e, err := typed[Error](keys["error"])
+		if err != nil || e.Code == "" || e.Message == "" || !slices.Contains([]string{"never", "same_request", "after_reconcile"}, e.Retry) || len(env.Result) > 0 {
 			return nil, fmt.Errorf("invalid adapter error envelope")
 		}
-		return nil, env.Error
+		return nil, &e
 	}
-	if len(env.Result) == 0 || env.Error != nil {
+	if len(env.Result) == 0 || keys["error"] != nil {
 		return nil, fmt.Errorf("invalid adapter success envelope")
 	}
 	switch op {
@@ -209,11 +210,40 @@ func DecodeResult(data []byte, op string) (any, error) {
 	case "read":
 		return typed[ReadResult](env.Result)
 	case "openCopy", "stageReference", "resolve", "lookupOperation":
-		return typed[OpenResult](env.Result)
+		value, err := typed[OpenResult](env.Result)
+		if err == nil && !validOpenResult(value, op) {
+			err = fmt.Errorf("invalid %s receipt", op)
+		}
+		return value, err
 	case "send":
-		return typed[SendResult](env.Result)
+		value, err := typed[SendResult](env.Result)
+		if err == nil && (value.State != "accepted" && value.State != "completed" || value.RequestID == "" || value.Handle == "") {
+			err = fmt.Errorf("invalid send receipt")
+		}
+		return value, err
 	default:
 		return nil, Unsupported(op)
 	}
 }
-func typed[T any](b []byte) (T, error) { var v T; err := decode(b, &v); return v, err }
+func typed[T any](b []byte) (T, error) {
+	var v T
+	err := packet.DecodeClosed(b, MaxResponseBytes, &v)
+	return v, err
+}
+
+func validOpenResult(v OpenResult, op string) bool {
+	switch v.State {
+	case "ready":
+		return v.Handle != "" && v.NativeSession != ""
+	case "staged":
+		return v.Handle != "" && v.NextAction != ""
+	case "manual":
+		return v.Artifact != "" && v.NextAction != ""
+	case "needs_reconciliation":
+		return v.NextAction != "" && (v.OperationID != "" || v.Handle != "")
+	case "pending", "unknown":
+		return op == "lookupOperation"
+	default:
+		return false
+	}
+}

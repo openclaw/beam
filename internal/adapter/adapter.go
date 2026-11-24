@@ -97,6 +97,20 @@ type Envelope struct {
 }
 
 func Success(value any) (Envelope, error) {
+	// Empty pages are successful reads. Encode their arrays consistently even
+	// when a harness returned a Go zero-value slice.
+	switch r := value.(type) {
+	case ListResult:
+		if r.Entries == nil {
+			r.Entries = []Entry{}
+			value = r
+		}
+	case ReadResult:
+		if r.Items == nil {
+			r.Items = []clean.Item{}
+			value = r
+		}
+	}
 	b, err := json.Marshal(value)
 	return Envelope{Protocol: Protocol, OK: true, Result: b}, err
 }

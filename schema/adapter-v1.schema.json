@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Beam adapter protocol 1",
-  "description": "One request to a locally configured executable. Responses use cli-v1.schema.json and the operation-specific result defined in the Beam specification.",
+  "description": "One request to a locally configured executable. Responses use cli-v1.schema.json. Validate successful result values against the matching operation in adapter-result-v1.schema.json.",
   "type": "object",
   "additionalProperties": false,
   "required": [

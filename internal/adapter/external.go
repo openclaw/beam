@@ -67,6 +67,9 @@ func (a External) Call(ctx context.Context, r Request) (any, error) {
 	if runErr != nil {
 		return nil, Fail("temporary", "after_reconcile", "adapter reported success but exited unsuccessfully")
 	}
+	if sent, ok := result.(SendResult); ok && (sent.Handle != r.Handle || sent.RequestID != r.RequestID) {
+		return nil, Fail("needs_reconciliation", "after_reconcile", "the send receipt identifies another handle or request; reconcile the original request")
+	}
 	return result, nil
 }
 
