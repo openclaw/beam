@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -70,6 +71,79 @@ func TestSelectedMainBranch(t *testing.T) {
 		t.Fatal("accepted path traversal")
 	}
 }
+func writeMainSession(t *testing.T, dir, fileID, sessionID, project string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(map[string]any{
+		"type": "user", "uuid": "first", "sessionId": sessionID, "cwd": project,
+		"message": map[string]string{"role": "user", "content": "selected text"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, fileID+".jsonl"), body, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReadInOversizedInventory(t *testing.T) {
+	a := Adapter{Project: t.TempDir(), ConfigDir: t.TempDir()}
+	project, err := filepath.EvalSymlinks(a.Project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CLAUDE_CODE_PROJECT_DIR_NAME", "fixture")
+	dir := filepath.Join(a.ConfigDir, "projects", "fixture")
+	writeMainSession(t, dir, "chosen", "chosen", project)
+	for i := range 10000 {
+		if err := os.WriteFile(filepath.Join(dir, strconv.Itoa(i)+".jsonl"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := context.Background()
+	if _, err := a.Call(ctx, adapter.Request{Op: "list", Limit: 1}); err == nil || !strings.Contains(err.Error(), "inventory exceeds") {
+		t.Fatalf("list limit: %v", err)
+	}
+	got, err := a.Call(ctx, adapter.Request{Op: "read", Selection: "chosen"})
+	if err != nil || got.(adapter.ReadResult).Items[0].Text != "selected text" {
+		t.Fatalf("read: %v, %v", got, err)
+	}
+	if _, err := a.Call(ctx, adapter.Request{Op: "read", Selection: "missing"}); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing selection: %v", err)
+	}
+}
+
+func TestExactReadInCollidingProjectDirectories(t *testing.T) {
+	a := Adapter{Project: t.TempDir(), ConfigDir: t.TempDir()}
+	project, err := filepath.EvalSymlinks(a.Project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := strings.Repeat("p", 200)
+	t.Setenv("CLAUDE_CODE_PROJECT_DIR_NAME", prefix+"x")
+	first := filepath.Join(a.ConfigDir, "projects", prefix+"-a")
+	second := filepath.Join(a.ConfigDir, "projects", prefix+"-b")
+	// Older transcripts can lack sessionId. The filename spelling still selects them.
+	writeMainSession(t, first, "Case", "", project)
+	writeMainSession(t, second, "Case", "Case", project+"-other")
+	read := func(id string) error {
+		_, err := a.Call(context.Background(), adapter.Request{Op: "read", Selection: id})
+		return err
+	}
+	if err := read("Case"); err != nil {
+		t.Fatal(err)
+	}
+	if err := read("case"); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("accepted a different legacy filename: %v", err)
+	}
+	writeMainSession(t, second, "Case", "Case", project)
+	if err := read("Case"); err == nil || !strings.Contains(err.Error(), "ambiguous session ID") {
+		t.Fatalf("duplicate selection: %v", err)
+	}
+}
+
 func TestNativeClaudePluginValidation(t *testing.T) {
 	if os.Getenv("BEAM_TEST_NATIVE") != "1" {
 		t.Skip("set BEAM_TEST_NATIVE=1 to run installed Claude Code")

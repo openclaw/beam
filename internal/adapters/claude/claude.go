@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	native "github.com/openclaw/beam/integrations/claude"
@@ -70,7 +71,7 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 		var files []localhistory.File
 		for _, d := range dirs {
 			dir := filepath.Join(base, d)
-			names, err := localhistory.Names(dir, ".jsonl")
+			names, err := sessionNames(dir, wanted)
 			if err != nil {
 				return nil, err
 			}
@@ -79,9 +80,6 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 					return nil, err
 				}
 				id := strings.TrimSuffix(n, ".jsonl")
-				if wanted != "" && id != wanted {
-					continue
-				}
 				if _, _, err := localhistory.Selection(id); err != nil || strings.Contains(id, "#") {
 					continue
 				}
@@ -98,8 +96,19 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 				if statErr != nil {
 					return nil, statErr
 				}
-				if filepath.Clean(caller) != cwd {
+				if filepath.Clean(caller.Cwd) != cwd {
 					continue
+				}
+				if wanted != "" && caller.SessionID != wanted {
+					// A legacy or mixed-session header cannot confirm the spelling on
+					// case-insensitive filesystems. Match the actual directory entry.
+					exact, err := exactName(ctx, dir, n)
+					if err != nil {
+						return nil, err
+					}
+					if !exact {
+						continue
+					}
 				}
 				files = append(files, localhistory.File{ID: id, Title: "Claude session " + id, Path: filepath.Join(dir, n), Updated: st.ModTime()})
 			}
@@ -109,19 +118,61 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 		return load(ctx, f, branch, cwd)
 	}}, nil
 }
-func project(f *os.File) (string, error) {
+
+func sessionNames(dir, wanted string) ([]string, error) {
+	if wanted == "" {
+		return localhistory.Names(dir, ".jsonl")
+	}
+	// Selection validates the ID. Claude names each main transcript <id>.jsonl.
+	name := wanted + ".jsonl"
+	st, err := os.Lstat(filepath.Join(dir, name))
+	if errors.Is(err, os.ErrNotExist) || (err == nil && !st.Mode().IsRegular()) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return []string{name}, nil
+}
+
+func exactName(ctx context.Context, dir, name string) (bool, error) {
+	d, err := os.Open(dir)
+	if err != nil {
+		return false, err
+	}
+	defer d.Close()
+	for {
+		if err := ctx.Err(); err != nil {
+			return false, err
+		}
+		names, err := d.Readdirnames(256)
+		if slices.Contains(names, name) {
+			return true, nil
+		}
+		if err == io.EOF {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+}
+
+type projectRecord struct {
+	Cwd, SessionID string
+	IsSidechain    bool
+}
+
+func project(f *os.File) (projectRecord, error) {
 	s := bufio.NewScanner(io.LimitReader(f, 4<<20))
 	s.Buffer(make([]byte, 32<<10), 4<<20)
 	for s.Scan() {
-		var r struct {
-			Cwd         string
-			IsSidechain bool
-		}
+		var r projectRecord
 		if json.Unmarshal(s.Bytes(), &r) == nil && !r.IsSidechain && r.Cwd != "" {
-			return r.Cwd, nil
+			return r, nil
 		}
 	}
-	return "", s.Err()
+	return projectRecord{}, s.Err()
 }
 
 type row struct {
@@ -145,7 +196,7 @@ func load(ctx context.Context, file localhistory.File, branch, cwd string) (loca
 	if err != nil {
 		return localhistory.History{}, err
 	}
-	if filepath.Clean(caller) != cwd {
+	if filepath.Clean(caller.Cwd) != cwd {
 		return localhistory.History{}, errors.New("selected Claude session project changed")
 	}
 	if _, err = f.Seek(0, io.SeekStart); err != nil {
