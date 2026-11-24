@@ -84,6 +84,12 @@ jobs:
           go test -v -count=1 -tags=beam_native ./conformance/e2e -run '^TestNativeRoundTrip$'
           go test -v -count=1 ./internal/adapters/acp
           BEAM_TEST_NATIVE=1 go test -v -count=1 ./internal/adapters/{claude,pi,gemini}
+      - name: Export from a scoped OpenClaw Gateway
+        run: |
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/openclaw" openclaw@2026.6.11
+          export PATH="$RUNNER_TEMP/openclaw/node_modules/.bin:$PATH"
+          BEAM_E2E_BINARY="$RUNNER_TEMP/beam" BEAM_TEST_OPENCLAW_SOURCE=1 \
+            go test -v -count=1 ./internal/adapters/openclaw -run '^TestNativeOpenClawSource$'
   smoke:
     needs: build
     strategy:
