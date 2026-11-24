@@ -2,6 +2,7 @@
 """Wrap the released executables as optional npm dependencies, without install hooks."""
 
 import argparse
+import base64
 import gzip
 import hashlib
 import io
@@ -66,6 +67,7 @@ def package(dist, version, destination):
         checksums[name] = checksum
     destination.mkdir(parents=True, exist_ok=True)
     files = []
+    packages = {}
     license_text = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
     for go_os, platform in PLATFORMS.items():
         for go_arch, arch in ARCHITECTURES.items():
@@ -81,6 +83,19 @@ def package(dist, version, destination):
             binary = extract_binary(native, executable)
             wrap(wrapper, version, platform, arch, executable, binary, license_text)
             files.extend([native, wrapper])
+            with wrapper.open("rb") as data:
+                integrity = hashlib.file_digest(data, "sha512").digest()
+            packages[f"{platform}-{arch}"] = {
+                "package": f"@openclaw/beam-{platform}-{arch}",
+                "archive": wrapper.name,
+                "sha256": digest(wrapper),
+                "integrity": "sha512-" + base64.b64encode(integrity).decode("ascii"),
+                "executable": "bin/" + executable,
+                "executableSha256": hashlib.sha256(binary).hexdigest(),
+            }
+    manifest = destination / "platforms.json"
+    manifest.write_text(json.dumps({"version": version, "platforms": packages}, indent=2) + "\n")
+    files.append(manifest)
     sums = "".join(f"{digest(path)}  {path.name}\n" for path in sorted(files))
     (destination / "SHA256SUMS").write_text(sums)
 

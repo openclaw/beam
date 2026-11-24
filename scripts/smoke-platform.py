@@ -2,6 +2,7 @@
 """Verify a native release and its npm wrapper on the target operating system."""
 
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -20,7 +21,8 @@ def smoke(assets, version, go_os, go_arch):
     sums = {name: checksum for checksum, name in (
         line.split(maxsplit=1) for line in (assets / "SHA256SUMS").read_text().splitlines()
     )}
-    for artifact in (native, wrapper):
+    platforms = assets / "platforms.json"
+    for artifact in (native, wrapper, platforms):
         with artifact.open("rb") as data:
             if hashlib.file_digest(data, "sha256").hexdigest() != sums[artifact.name]:
                 raise ValueError(f"checksum mismatch for {artifact.name}")
@@ -39,6 +41,16 @@ def smoke(assets, version, go_os, go_arch):
         member = archive.getmember("package/bin/" + executable)
         if not member.isfile() or member.mode != 0o755 or archive.extractfile(member).read() != binary:
             raise ValueError(f"incorrect npm executable in {wrapper.name}")
+    index = json.loads(platforms.read_bytes())
+    with wrapper.open("rb") as data:
+        integrity = base64.b64encode(hashlib.file_digest(data, "sha512").digest()).decode("ascii")
+    expected_package = {
+        "package": manifest["name"], "archive": wrapper.name, "sha256": sums[wrapper.name],
+        "integrity": "sha512-" + integrity, "executable": manifest["bin"]["beam"],
+        "executableSha256": hashlib.sha256(binary).hexdigest(),
+    }
+    if index["version"] != version or index["platforms"][f"{platform}-{arch}"] != expected_package:
+        raise ValueError(f"incorrect platform manifest for {wrapper.name}")
     fixtures = Path(__file__).resolve().parents[1] / "conformance" / "packet"
     with tempfile.TemporaryDirectory(prefix="Beam release smoke ") as directory:
         cli = Path(directory) / executable
