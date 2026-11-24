@@ -73,7 +73,17 @@ func newGateway(t *testing.T, c cli, modelURL string) *gateway {
 	g := &gateway{binary: bin, port: port, dir: c.dir, log: filepath.Join(state, "gateway.log"),
 		env: append(append([]string(nil), c.env...), "OPENCLAW_CONFIG_PATH="+file, "OPENCLAW_STATE_DIR="+state,
 			"OPENCLAW_SKIP_CHANNELS=1", "OPENCLAW_SKIP_GMAIL_WATCHER=1", "OPENCLAW_SKIP_CRON=1", "OPENCLAW_SKIP_BROWSER_CONTROL_SERVER=1", "OPENCLAW_SKIP_CANVAS_HOST=1")}
-	t.Cleanup(g.stop)
+	t.Cleanup(func() {
+		g.stop()
+		if t.Failed() {
+			logs, _ := os.ReadFile(g.log)
+			for _, line := range strings.Split(string(logs), "\n") {
+				if strings.Contains(line, "plugin http route failed") {
+					t.Logf("Gateway route error: %.500s", line)
+				}
+			}
+		}
+	})
 	return g
 }
 
@@ -87,7 +97,12 @@ func (g *gateway) cli(t *testing.T, args ...string) []byte {
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("isolated OpenClaw %s: %v\n%s", args[0], err, stderr.Bytes())
+		var failure struct {
+			Error   struct{ Code, Message string }
+			Message string
+		}
+		_ = json.Unmarshal(out, &failure)
+		t.Fatalf("isolated OpenClaw %s: %v (%s, %.250s, %.250s)\n%s", args[0], err, failure.Error.Code, failure.Error.Message, failure.Message, stderr.Bytes())
 	}
 	return out
 }
@@ -159,14 +174,29 @@ func (g *gateway) proxy(t *testing.T, person, clientIP string, dropRelease *atom
 		r.Out.Header.Set("X-Forwarded-Proto", "http")
 		r.Out.Header.Set("X-Forwarded-For", clientIP)
 	}}
-	if dropRelease != nil {
-		p.ModifyResponse = func(r *http.Response) error {
-			if r.StatusCode/100 == 2 && r.Request.Method == "POST" && strings.HasSuffix(r.Request.URL.Path, "/release") && dropRelease.CompareAndSwap(true, false) {
-				_, _ = io.Copy(io.Discard, r.Body)
-				return errors.New("fixture dropped committed release acknowledgement")
+	p.ModifyResponse = func(r *http.Response) error {
+		if r.StatusCode >= 400 {
+			// Keep the client-facing bytes and restrict diagnostics to the
+			// receiver's public error fields. Headers can contain credentials.
+			prefix, err := io.ReadAll(io.LimitReader(r.Body, 4096))
+			if err != nil {
+				return err
 			}
-			return nil
+			r.Body = struct {
+				io.Reader
+				io.Closer
+			}{io.MultiReader(bytes.NewReader(prefix), r.Body), r.Body}
+			var reply struct {
+				Error struct{ Code, Message string }
+			}
+			_ = json.Unmarshal(prefix, &reply)
+			t.Logf("Gateway %s %s returned %d (%s, %.250s)", r.Request.Method, r.Request.URL.Path, r.StatusCode, reply.Error.Code, reply.Error.Message)
 		}
+		if dropRelease != nil && r.StatusCode/100 == 2 && r.Request.Method == "POST" && strings.HasSuffix(r.Request.URL.Path, "/release") && dropRelease.CompareAndSwap(true, false) {
+			_, _ = io.Copy(io.Discard, r.Body)
+			return errors.New("fixture dropped committed release acknowledgement")
+		}
+		return nil
 	}
 	server := httptest.NewServer(p)
 	t.Cleanup(server.Close)
