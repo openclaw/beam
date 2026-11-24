@@ -61,11 +61,20 @@ func (c *Client) Continue(ctx context.Context, link string, in Instruction) (Sen
 	if err != nil {
 		return SendReceipt{}, err
 	}
-	if err := require(caps, "continue"); err != nil {
-		return SendReceipt{}, err
-	}
-	if caps.SendReceiptRetentionSeconds <= 0 {
-		return SendReceipt{}, failure("send_recovery_unavailable", "never")
+	canWrite := slices.Contains(caps.Operations, "continue")
+	if !canWrite {
+		// A caller may retain read access after losing the right to send.
+		// Only query intents already recorded by this client under that mode.
+		if !slices.Contains(caps.Operations, "read") {
+			return SendReceipt{}, failure("unsupported_capability", "never")
+		}
+		exists, err := c.hasJournal()
+		if err != nil {
+			return SendReceipt{}, err
+		}
+		if !exists {
+			return SendReceipt{}, failure("unsupported_capability", "never")
+		}
 	}
 	s, err := c.journal()
 	if err != nil {
@@ -95,6 +104,12 @@ func (c *Client) Continue(ctx context.Context, link string, in Instruction) (Sen
 		return SendReceipt{}, err
 	}
 	if !found {
+		if !canWrite {
+			return SendReceipt{}, failure("unsupported_capability", "never")
+		}
+		if caps.SendReceiptRetentionSeconds <= 0 {
+			return SendReceipt{}, failure("send_recovery_unavailable", "never")
+		}
 		id := in.RequestID
 		if id == "" {
 			id, err = newID()

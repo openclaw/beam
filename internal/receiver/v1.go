@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"os"
 	"regexp"
 	"strings"
 
@@ -138,14 +136,11 @@ func (c *Client) ShareV1(ctx context.Context, data []byte) (V1Receipt, error) {
 	}
 	// Ordinary v1 hooks inspect an existing retirement fence. A plain upload
 	// works without creating or requiring a local journal.
-	path := c.state
-	if path == "" {
-		path, err = journal.DefaultPath()
-		if err != nil {
-			return V1Receipt{}, err
-		}
+	exists, err := c.hasJournal()
+	if err != nil {
+		return V1Receipt{}, err
 	}
-	if _, err := os.Stat(path); err == nil {
+	if exists {
 		row, ok, err := c.LegacyRow(ctx, id)
 		if err != nil {
 			return V1Receipt{}, err
@@ -156,8 +151,6 @@ func (c *Client) ShareV1(ctx context.Context, data []byte) (V1Receipt, error) {
 			}
 			return c.checkV1Receipt(row.Receipt, id)
 		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return V1Receipt{}, err
 	}
 	r, err := c.postV1(ctx, data, id)
 	if err != nil {

@@ -170,6 +170,22 @@ func (c *Client) authHeaders(ctx context.Context) (http.Header, error) {
 	}
 	return c.headers.Clone(), nil
 }
+func (c *Client) hasJournal() (bool, error) {
+	path := c.state
+	if path == "" {
+		var err error
+		path, err = journal.DefaultPath()
+		if err != nil {
+			return false, err
+		}
+	}
+	_, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func (c *Client) journal() (*journal.Store, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

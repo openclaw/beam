@@ -23,9 +23,14 @@ func TestLostSendAcknowledgementUsesStatusAndNoPlaintextJournal(t *testing.T) {
 	const id = "4915ca60-754f-4ac2-afc3-5f269af52053"
 	link := v2Path + "/publications/gen"
 	var writes, queries atomic.Int64
+	var downgraded atomic.Bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case v2Path + "/capabilities":
+			if downgraded.Load() {
+				fmt.Fprint(w, `{"protocol":2,"packetVersions":[2],"operations":["read"],"maxBodyBytes":57344}`)
+				return
+			}
 			fmt.Fprint(w, `{"protocol":2,"packetVersions":[2],"operations":["continue"],"maxBodyBytes":57344,"sendReceiptRetentionSeconds":3600}`)
 		case link + "/continue":
 			if r.Method != "POST" || r.Header.Get("Idempotency-Key") != id {
@@ -63,6 +68,7 @@ func TestLostSendAcknowledgementUsesStatusAndNoPlaintextJournal(t *testing.T) {
 	if err != nil || bytes.Contains(raw, []byte(instruction)) {
 		t.Fatal("journal retained private user instruction", err)
 	}
+	downgraded.Store(true)
 	c = clientFor(t, srv.URL, state)
 	user.RequestID = id
 	out, err := c.Continue(ctx, link, user)
@@ -75,6 +81,9 @@ func TestLostSendAcknowledgementUsesStatusAndNoPlaintextJournal(t *testing.T) {
 	user.Text = "changed"
 	if _, err := c.Continue(ctx, link, user); err == nil {
 		t.Fatal("reused operation for changed intent")
+	}
+	if _, err := c.Continue(ctx, link, Instruction{Text: "a new turn"}); err == nil || !strings.Contains(err.Error(), "unsupported_capability") {
+		t.Fatal("read-only identity could start a new send", err)
 	}
 	if writes.Load() != 1 || queries.Load() != 2 {
 		t.Fatalf("writes=%d queries=%d", writes.Load(), queries.Load())
