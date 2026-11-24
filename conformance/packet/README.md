@@ -17,3 +17,9 @@ node --test schema/packet-v2.test.mjs
 ```
 
 Node 22.18 or later can run the generated TypeScript tests directly. The compiled Go executable handles packing and cleaning without a Node installation.
+
+## Cleaner input
+
+`schema/packet-candidate-v1.schema.json` describes one complete, assembled read result passed to `beam clean --protocol 1`. Bound the UTF-8 JSON input to 4 MiB. Supply one exact origin and branch, oldest-visible item first, and `completeness: "partial"` when the reader hit a gap. A host may supply `sourceModel` as an optional hint. Unknown members, duplicate keys, non-user speaker IDs, and empty post-cleaning history are errors. A host must authorize selection and drop raw tool I/O, hidden reasoning, provider setup, and attachment bytes before invoking the cleaner.
+
+The omission report is a separate stderr JSON value with `redactions`, `omissions`, `lossyConversions`, and `truncated`. The package uses one-based item positions for explicit omission. Literal masking applies to every outbound display field. Automated detectors recognize common credentials, contact data, setup wrappers, local paths and unsafe URL query values; sensitive prose and unfamiliar secret formats may survive. Inspect the final packet or specify an exact literal before release.

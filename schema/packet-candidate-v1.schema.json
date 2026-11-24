@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Beam cleaner input protocol 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source",
+    "origin",
+    "title",
+    "updatedAt",
+    "completed",
+    "items",
+    "completeness"
+  ],
+  "properties": {
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "sourceHome",
+        "nativeSession"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceHome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nativeSession": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "branch": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 64
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "sourceModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "model"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9._-]+$"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "not": {
+            "pattern": "\\s"
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "text"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "userMessage",
+              "agentMessage",
+              "other"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "speakerId": {
+            "type": "string"
+          }
+        },
+        "dependentSchemas": {
+          "speakerId": {
+            "properties": {
+              "type": {
+                "const": "userMessage"
+              }
+            }
+          }
+        }
+      }
+    },
+    "completeness": {
+      "enum": [
+        "complete",
+        "partial"
+      ]
+    }
+  }
+}
