@@ -3,10 +3,12 @@ package receiver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -206,5 +208,23 @@ func TestLegacyReleasePreservesFrozenBytes(t *testing.T) {
 	c := clientFor(t, srv.URL+v1Path, filepath.Join(t.TempDir(), "state.db"))
 	if _, err := c.HandoffV1(ctx, fixtureID, raw, false); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestPlainV1ShareDoesNotCreateJournal(t *testing.T) {
+	p, _ := packet.Parse(fixture(t))
+	raw, err := packet.V1Projection(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, `{"ok":true}`) }))
+	defer srv.Close()
+	state := filepath.Join(t.TempDir(), "absent", "journal.sqlite")
+	c := clientFor(t, srv.URL+v1Path, state)
+	if _, err := c.ShareV1(context.Background(), raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Dir(state)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("snapshot unexpectedly created a journal", err)
 	}
 }

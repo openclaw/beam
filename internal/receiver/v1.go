@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"os"
 	"regexp"
 	"strings"
 
@@ -134,25 +136,38 @@ func (c *Client) ShareV1(ctx context.Context, data []byte) (V1Receipt, error) {
 	if err != nil {
 		return V1Receipt{}, err
 	}
-	s, err := c.journal()
-	if err != nil {
-		return V1Receipt{}, err
-	}
-	row, ok, err := s.Legacy(ctx, c.legacyEndpoint, id)
-	if err != nil {
-		return V1Receipt{}, err
-	}
-	if ok {
-		if len(row.Receipt) == 0 {
-			return V1Receipt{}, failure("handoff_pending", "after_reconcile")
+	// Ordinary v1 hooks inspect an existing retirement fence. A plain upload
+	// works without creating or requiring a local journal.
+	path := c.state
+	if path == "" {
+		path, err = journal.DefaultPath()
+		if err != nil {
+			return V1Receipt{}, err
 		}
-		return c.checkV1Receipt(row.Receipt, id)
+	}
+	if _, err := os.Stat(path); err == nil {
+		row, ok, err := c.LegacyRow(ctx, id)
+		if err != nil {
+			return V1Receipt{}, err
+		}
+		if ok {
+			if len(row.Receipt) == 0 {
+				return V1Receipt{}, failure("handoff_pending", "after_reconcile")
+			}
+			return c.checkV1Receipt(row.Receipt, id)
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return V1Receipt{}, err
 	}
 	r, err := c.postV1(ctx, data, id)
 	if err != nil {
 		return V1Receipt{}, err
 	}
 	if r.Handoff != nil {
+		s, err := c.journal()
+		if err != nil {
+			return V1Receipt{}, err
+		}
 		if _, err := s.BeginLegacy(ctx, c.legacyEndpoint, id, data); err != nil {
 			return V1Receipt{}, err
 		}
