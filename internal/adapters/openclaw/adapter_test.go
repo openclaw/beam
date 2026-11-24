@@ -73,3 +73,16 @@ func TestNativeGenerationChange(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestScopedHistoricalSpeakers(t *testing.T) {
+	var one, two sender
+	if err := json.Unmarshal([]byte(`{"identity":{"type":"remote","id":"7","domain":"first","pluginId":"peer","idKind":"user"}}`), &one); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(`{"identity":{"idKind":"user","id":"7","domain":"second","type":"remote","pluginId":"peer"}}`), &two); err != nil {
+		t.Fatal(err)
+	}
+	if one.key() == two.key() {
+		t.Fatal("distinct domains collapsed into one historical speaker")
+	}
+}

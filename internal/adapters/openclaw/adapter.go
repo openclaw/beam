@@ -97,7 +97,7 @@ func read(ctx context.Context, c source, home string, r adapter.Request) (adapte
 		var loc locator
 		dec := json.NewDecoder(strings.NewReader(r.Selection))
 		dec.DisallowUnknownFields()
-		if err := dec.Decode(&loc); err != nil || loc.CatalogID == "" || loc.HostID == "" || loc.ThreadID == "" {
+		if err := dec.Decode(&loc); !json.Valid([]byte(r.Selection)) || err != nil || loc.CatalogID == "" || loc.HostID == "" || loc.ThreadID == "" {
 			return adapter.ReadResult{}, errors.New("select a complete catalog locator")
 		}
 		normalized, _ := json.Marshal(loc)
@@ -113,13 +113,16 @@ func read(ctx context.Context, c source, home string, r adapter.Request) (adapte
 	return adapter.ReadResult{Candidate: candidate, NextCursor: next}, err
 }
 
-type sender struct{ Identity struct{ Type, ID string } }
+type sender struct{ Identity map[string]json.RawMessage }
 
 func (s sender) key() string {
-	if s.Identity.Type == "" || s.Identity.ID == "" {
+	if len(s.Identity["id"]) == 0 || len(s.Identity["type"]) == 0 {
 		return ""
 	}
-	return s.Identity.Type + ":" + s.Identity.ID
+	// Preserve the source domain as well as the local ID. Two federated
+	// providers may use the same ID for different people.
+	canonical, _ := json.Marshal(s.Identity)
+	return string(canonical)
 }
 
 func setTime(c *clean.Candidate, raw json.RawMessage) {
@@ -166,6 +169,7 @@ func chatHistory(ctx context.Context, c source, key string, dst *clean.Candidate
 		Sender    sender
 	}
 	type page struct {
+		SessionKey           string
 		SessionID            string
 		Messages             []message
 		HasMore, WindowReset bool
@@ -194,7 +198,12 @@ func chatHistory(ctx context.Context, c source, key string, dst *clean.Candidate
 				total = *resp.TotalMessages
 			}
 			if nativeID != "" {
-				dst.Origin.NativeSession = key + "#" + nativeID
+				canonical := resp.SessionKey
+				if canonical == "" {
+					canonical = key
+				}
+				encoded, _ := json.Marshal([]string{canonical, nativeID})
+				dst.Origin.NativeSession = string(encoded)
 			}
 		}
 		older := make([]clean.Item, 0, len(resp.Messages))
