@@ -11,7 +11,7 @@ import (
 func Dispatch(ctx context.Context, q adapter.Request, store staged.Store, reader func() (Reader, error)) (any, error) {
 	switch q.Op {
 	case "capabilities":
-		return Capabilities(ctx, store.Adapter), nil
+		return Capabilities(ctx, store.Adapter)
 	case "list", "read":
 		r, err := reader()
 		if err != nil {
@@ -19,12 +19,15 @@ func Dispatch(ctx context.Context, q adapter.Request, store staged.Store, reader
 		}
 		return r.Call(ctx, q)
 	case "stageReference":
-		caps := Capabilities(ctx, store.Adapter)
+		caps, err := Capabilities(ctx, store.Adapter)
+		if err != nil {
+			return nil, err
+		}
 		if caps.Version == "unavailable" {
-			return nil, adapter.Fail("not_installed", "after_setup", "install "+store.Adapter+" before opening a staged reference")
+			return nil, adapter.Fail("not_installed", "never", "install "+store.Adapter+" before opening a staged reference")
 		}
 		if !slices.Contains(caps.Destination, q.Op) {
-			return nil, adapter.Fail("unsupported_version", "after_setup", "the installed "+store.Adapter+" does not advertise its native reference option")
+			return nil, adapter.Fail("unsupported_version", "never", "the installed "+store.Adapter+" does not advertise its native reference option")
 		}
 		return store.Stage(q)
 	case "resolve":

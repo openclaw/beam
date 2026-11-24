@@ -111,7 +111,7 @@ func load(ctx context.Context, file localhistory.File, branch, project string) (
 				return errors.New("selected Pi session changed")
 			}
 			if h.Version != 2 && h.Version != 3 {
-				return adapter.Fail("unsupported_version", "after_setup", "Pi reader supports session tree formats 2 and 3")
+				return adapter.Fail("unsupported_version", "never", "Pi reader supports session tree formats 2 and 3")
 			}
 			headerRead = true
 			return nil

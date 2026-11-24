@@ -104,7 +104,7 @@ func (r Reader) Call(ctx context.Context, q adapter.Request) (any, error) {
 
 func pageError(err error) error {
 	if err.Error() == "source_changed" {
-		return adapter.Fail("source_changed", "after_refresh", "native history changed; repeat the exact selection")
+		return adapter.Fail("source_changed", "after_reconcile", "native history changed; repeat the exact selection")
 	}
 	return err
 }

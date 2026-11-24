@@ -166,7 +166,7 @@ func (s Store) Stage(q adapter.Request) (adapter.OpenResult, error) {
 		return adapter.OpenResult{}, err
 	}
 	if len(entries) > maxReferences {
-		return adapter.OpenResult{}, adapter.Fail("unavailable", "after_setup", "reference storage is full; remove a staged reference directory you no longer use and retry")
+		return adapter.OpenResult{}, adapter.Fail("unavailable", "never", "reference storage is full; remove a staged reference directory you no longer use and retry")
 	}
 	if err := os.WriteFile(filepath.Join(temp, Artifact), raw, 0600); err != nil {
 		return adapter.OpenResult{}, err

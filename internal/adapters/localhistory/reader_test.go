@@ -3,9 +3,7 @@ package localhistory
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
-	"runtime"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -44,23 +42,19 @@ func TestReadPagesBoundEncodedWireBytes(t *testing.T) {
 }
 
 func TestVersionRequiresNativeReceivingFlag(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("uses a POSIX executable fixture")
-	}
-	dir := t.TempDir()
-	t.Setenv("PATH", dir)
-	name := filepath.Join(dir, "gemini")
+	caps := adapter.Capabilities{Version: "unavailable"}
 	for _, tc := range []struct {
 		help      string
 		supported bool
 	}{{"old native options", false}, {"--session-file FILE", true}} {
-		script := "#!/bin/sh\nif [ \"$1\" = --help ]; then echo '" + tc.help + "'; else echo 1.0.0; fi\n"
-		if err := os.WriteFile(name, []byte(script), 0700); err != nil {
-			t.Fatal(err)
+		result, err := qualify(caps, "--session-file", probeResult{text: "1.0.0"}, probeResult{text: tc.help})
+		if err != nil || result.Version != "1.0.0" || slices.Contains(result.Destination, "stageReference") != tc.supported {
+			t.Fatal(result, err)
 		}
-		caps := Capabilities(context.Background(), "gemini")
-		if caps.Version != "1.0.0" || slices.Contains(caps.Destination, "stageReference") != tc.supported {
-			t.Fatal(caps)
-		}
+	}
+	timeout := adapter.Fail("timeout", "same_request", "timed out")
+	_, err := qualify(caps, "--session-file", probeResult{text: "1.0.0"}, probeResult{err: timeout})
+	if !errors.Is(err, timeout) {
+		t.Fatalf("collapsed installed executable probe error: %v", err)
 	}
 }
