@@ -286,22 +286,26 @@ Keep `openclaw/plugin-sdk/*` generic. Product labels, the packet format, public 
 
 ### 1. Authenticated caller for HTTP and RPC
 
-Expose one read-only view of the request the host already admitted. An illustrative public shape follows. The host constructs it and preserves the same authority across awaited work.
+The OpenClaw SDK candidate exposes one frozen view of the current authenticated HTTP or RPC request. A handler calls `getGatewayRequestAuthorityV1()` from `openclaw/plugin-sdk/gateway-request-authority`. It returns `undefined` outside an admitted handler. The API below is under review. [OpenClaw SDK proposal](https://github.com/openclaw/openclaw/pull/204563)
 
 ```ts
-type PluginRequestAuthority = {
-  actor: { kind: "person"; profileId: string } | { kind: "service" | "shared" };
+type GatewayRequestAuthorityV1 = Readonly<{
   scopes: readonly string[];
-  grant?: { issuer: string; assertCurrent(): void };
-  signal: AbortSignal;
-  revalidate(): Promise<void>;
+  clientIp?: string;
+  attributionProfileId?: string;
+  personProfileId?: string;
+  requiredGrantPluginId?: string;
   assertCurrent(): void;
-};
+  revalidate(): Promise<void>;
+}>;
 ```
 
-Define “person” from the authentication provenance. A service or shared-secret caller may have a display profile. That profile alone cannot prove an individual publisher. The policy issuer attests the purpose of its grant. A connector declares which policy admits its restricted view. A generic grant from an unrelated issuer cannot satisfy it. Await `revalidate()` after asynchronous input reads and before disclosure or write preparation. Use synchronous `assertCurrent()` at write admission and inside the commit guard. Revalidate the captured grant itself so revocation followed by reinvitation cannot revive the original request. Return the same abstraction to HTTP and RPC handlers. Session authorization at the destination remains independent.
+- Use `personProfileId` to verify an individual publisher. A Gateway can attach an `attributionProfileId` for display when a shared credential or service authenticated the request. If `personProfileId` is absent, the host has supplied no verified individual. A plugin cannot determine the credential’s kind from that absence.
+- Check the admitted scopes and, when the connector requires a particular access policy, the exact `requiredGrantPluginId`. This identifies the policy explicitly required by the admitted role and confirmed by its original grant. Other grants may contribute scopes. Reopening or sending to a Team session still requires ordinary destination access.
+- Await `revalidate()` after asynchronous input reads and before a protected response or effect. At the synchronous write boundary, pass `assertCurrent` to the commit guard. Both retain the original request and grant. Revocation followed by a new invitation does not revive the original grant. The guards expire when the handler settles. A worker must obtain authority through its host-owned operation boundary.
+- Keep profile IDs, client IP and grant information inside the receiving host. The public packet contains only portable history and packet-local speaker aliases.
 
-Change `src/plugins/runtime/gateway-request-scope*`, the public SDK request-context export, and Gateway HTTP/RPC adapters. Migrate `extensions/beam/src/http.ts` and `owned-view.ts` off internal client fields. Verify the [current private-field lookup](https://github.com/openclaw/openclaw/blob/b9ef0d7fca28cfea8dec4472d4527d98c40d7ba2/extensions/beam/src/http.ts#L22-L33) and [shared-auth profile projection](https://github.com/openclaw/openclaw/blob/b9ef0d7fca28cfea8dec4472d4527d98c40d7ba2/src/gateway/http-auth-user-profile.ts#L217-L242).
+The SDK candidate adds the projection and retains each transport’s existing checks. Revalidation of the original paired-device HTTP token and iframe-cookie generation is a separate ingress requirement. Migration of the Beam HTTP and RPC consumers and joined multiplayer qualification are separate release steps. [Candidate source](https://github.com/openclaw/openclaw/blob/adc5ce924bea99f21445cf5465cb6ece3cf56977/src/plugins/runtime/gateway-request-authority.ts) · [SDK usage](https://github.com/openclaw/openclaw/blob/adc5ce924bea99f21445cf5465cb6ece3cf56977/docs/plugins/sdk-runtime/gateway-and-nodes.md#L113-L122)
 
 ### 2. Caller-scoped catalog route lookup
 
