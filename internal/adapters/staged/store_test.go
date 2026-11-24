@@ -2,6 +2,7 @@ package staged
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,5 +41,31 @@ func TestStagePersistsAndBindsExactPacket(t *testing.T) {
 	got, err := s.Lookup(id)
 	if err != nil || got.State != "unknown" {
 		t.Fatal(got, err)
+	}
+}
+
+func TestStageLeavesExistingReferencesAtCapacity(t *testing.T) {
+	s := Store{Root: t.TempDir(), Adapter: "pi"}
+	q := adapter.Request{OperationID: "already-staged", Packet: packet.Packet{Version: 2, BeamID: strings.Repeat("a", 32), Source: "fixture", Title: "fixture", UpdatedAt: "2026-11-23T00:00:00Z", Items: []packet.Item{{Type: "userMessage", Text: "fixture"}}}}
+	got, err := s.Stage(q)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Dir(filepath.Dir(got.Artifact))
+	for i := 1; i < maxReferences; i++ {
+		if err := os.Mkdir(filepath.Join(dir, fmt.Sprintf("reference-%d", i)), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.Stage(q); err != nil {
+		t.Fatal("existing operation at capacity:", err)
+	}
+	q.OperationID = "new"
+	if _, err := s.Stage(q); err == nil {
+		t.Fatal("accepted new operation at capacity")
+	}
+	files, err := os.ReadDir(dir)
+	if err != nil || len(files) != maxReferences {
+		t.Fatal("failed stage left extra artifact")
 	}
 }

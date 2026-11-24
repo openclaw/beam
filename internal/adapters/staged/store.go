@@ -21,6 +21,8 @@ import (
 
 const Artifact = "reference.beam.json"
 
+const maxReferences = 1024
+
 type Store struct {
 	Adapter, Root string
 	Prepare       func(dir, finalDir, handle string) error
@@ -152,6 +154,20 @@ func (s Store) Stage(q adapter.Request) (adapter.OpenResult, error) {
 		return adapter.OpenResult{}, err
 	}
 	defer os.RemoveAll(temp)
+	// Count preparations as reservations before storing any packet bytes. Concurrent writers
+	// can transiently refuse each other at capacity, but cannot overfill the store.
+	inventory, err := os.Open(parent)
+	if err != nil {
+		return adapter.OpenResult{}, err
+	}
+	entries, err := inventory.ReadDir(maxReferences + 1)
+	inventory.Close()
+	if err != nil && err != io.EOF {
+		return adapter.OpenResult{}, err
+	}
+	if len(entries) > maxReferences {
+		return adapter.OpenResult{}, adapter.Fail("unavailable", "after_setup", "reference storage is full; remove a staged reference directory you no longer use and retry")
+	}
 	if err := os.WriteFile(filepath.Join(temp, Artifact), raw, 0600); err != nil {
 		return adapter.OpenResult{}, err
 	}
