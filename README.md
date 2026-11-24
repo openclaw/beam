@@ -4,7 +4,7 @@ Beam moves reviewed conversation history between coding agents. You choose the s
 
 ## Install and transfer
 
-Install from source with Go 1.25 or newer.
+Install from source with a current Go toolchain. The module supports Go 1.25 or newer. Release builds use the pinned compiler in [`.go-version`](.go-version).
 
 ```sh
 go install github.com/openclaw/beam/cmd/beam@main
