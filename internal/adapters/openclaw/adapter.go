@@ -52,7 +52,7 @@ func list(ctx context.Context, c source, r adapter.Request) (adapter.ListResult,
 		}
 		offset = n
 	}
-	b, err := c.SourceCall(ctx, "sessions.list", map[string]any{"limit": r.Limit, "offset": offset, "rowMode": "compact"})
+	b, err := c.SourceCall(ctx, "sessions.list", map[string]any{"limit": r.Limit, "offset": offset})
 	if err != nil {
 		return adapter.ListResult{}, err
 	}
@@ -161,7 +161,9 @@ func textParts(raw json.RawMessage) string {
 }
 
 func chatHistory(ctx context.Context, c source, key string, dst *clean.Candidate) error {
-	params := map[string]any{"sessionKey": key, "limit": 100, "maxBytes": 128 << 10}
+	// The common request also works on Gateways predating cursor pagination.
+	// Their bounded history window is explicitly marked partial below.
+	params := map[string]any{"sessionKey": key, "limit": 100}
 	type message struct {
 		Role      string
 		Content   json.RawMessage
@@ -169,13 +171,14 @@ func chatHistory(ctx context.Context, c source, key string, dst *clean.Candidate
 		Sender    sender
 	}
 	type page struct {
-		SessionKey           string
-		SessionID            string
-		Messages             []message
-		HasMore, WindowReset bool
-		OlderCursor          string
-		NextOffset           *int
-		TotalMessages        *int
+		SessionKey    string
+		SessionID     string
+		Messages      []message
+		HasMore       *bool
+		WindowReset   bool
+		OlderCursor   string
+		NextOffset    *int
+		TotalMessages *int
 	}
 	seen := make(map[string]bool)
 	var nativeID string
@@ -229,7 +232,10 @@ func chatHistory(ctx context.Context, c source, key string, dst *clean.Candidate
 			setTime(dst, m.Timestamp)
 		}
 		dst.Items = append(older, dst.Items...)
-		if !resp.HasMore {
+		if resp.OlderCursor == "" && (resp.HasMore == nil || !*resp.HasMore) {
+			if resp.HasMore == nil && resp.TotalMessages == nil {
+				dst.Completeness = "partial"
+			}
 			return nil
 		}
 		if len(dst.Items) >= 200 || step == 31 {

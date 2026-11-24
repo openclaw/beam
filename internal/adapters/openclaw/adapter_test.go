@@ -74,6 +74,37 @@ func TestNativeGenerationChange(t *testing.T) {
 	}
 }
 
+func TestUnpagedGatewayAndCursorOnlyHistory(t *testing.T) {
+	for _, tc := range []struct {
+		name, initial, completeness string
+		calls                       int
+	}{
+		{"legacy", `{"sessionId":"s","messages":[{"role":"user","content":"first"}]}`, "partial", 1},
+		{"cursor", `{"sessionId":"s","messages":[{"role":"assistant","content":"last"}],"olderCursor":"prior"}`, "complete", 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			count := 0
+			s := sourceFunc(func(_ string, p map[string]any) (string, error) {
+				count++
+				if count == 1 {
+					if len(p) != 2 || p["limit"] != 100 || p["sessionKey"] != "k" {
+						t.Fatal(p)
+					}
+					return tc.initial, nil
+				}
+				if p["cursor"] != "prior" {
+					t.Fatal(p)
+				}
+				return `{"sessionId":"s","messages":[{"role":"user","content":"first"}],"hasMore":false}`, nil
+			})
+			result, err := read(context.Background(), s, "profile", adapter.Request{Selection: "k", Limit: 50})
+			if err != nil || count != tc.calls || result.Completeness != tc.completeness || result.Items[0].Text != "first" {
+				t.Fatal(result, count, err)
+			}
+		})
+	}
+}
+
 func TestScopedHistoricalSpeakers(t *testing.T) {
 	var one, two sender
 	if err := json.Unmarshal([]byte(`{"identity":{"type":"remote","id":"7","domain":"first","pluginId":"peer","idKind":"user"}}`), &one); err != nil {
