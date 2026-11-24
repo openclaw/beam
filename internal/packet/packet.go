@@ -155,7 +155,17 @@ func Render(p Packet) string {
 	quote := func(label, s string) {
 		b.WriteString("\n" + label + "\n\n")
 		for _, line := range strings.Split(strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n"), "\n") {
-			b.WriteString(">     " + line + "\n")
+			b.WriteString(">     ")
+			for _, r := range line {
+				if (unicode.IsControl(r) && r != '\t') || unicode.Is(unicode.Bidi_Control, r) {
+					// Rendered references may go directly to a terminal. Display
+					// control characters visibly without changing the reviewed file.
+					fmt.Fprintf(&b, "\\u%04x", r)
+				} else {
+					b.WriteRune(r)
+				}
+			}
+			b.WriteByte('\n')
 		}
 	}
 	quote("Title", p.Title)

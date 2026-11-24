@@ -154,3 +154,25 @@ func TestIdentityVectors(t *testing.T) {
 		}
 	}
 }
+
+func TestReusableDecoderAndLiteralRendering(t *testing.T) {
+	p, err := Parse([]byte(example))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.SourceModel = &Model{Provider: "fixture", Model: "stale"}
+	if err = DecodeClosed([]byte(example), MaxBytes, &p); err != nil || p.SourceModel != nil {
+		t.Fatal("optional fields leaked from prior document")
+	}
+	if err = DecodeClosed([]byte(strings.Replace(example, `"title":"Example"`, `"title":33`, 1)), MaxBytes, &p); err == nil || p.Title != "Example" {
+		t.Fatal("failed decode changed caller state")
+	}
+	if err = DecodeClosed([]byte(example), MaxBytes, (*Packet)(nil)); err == nil {
+		t.Fatal("accepted nil destination")
+	}
+	p.Items[0].Text = "prior\x1b[32m text \u202e"
+	rendered := Render(p)
+	if strings.ContainsAny(rendered, "\x1b\u202e") || !strings.Contains(rendered, `\u001b`) {
+		t.Fatal("untrusted packet influenced terminal rendering")
+	}
+}

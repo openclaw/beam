@@ -18,17 +18,19 @@ func DecodeClosed(data []byte, maxBytes int, dest any) error {
 		return errors.New("JSON exceeds its size limit or contains invalid Unicode")
 	}
 	t := reflect.TypeOf(dest)
-	if t == nil || t.Kind() != reflect.Pointer {
+	if t == nil || t.Kind() != reflect.Pointer || reflect.ValueOf(dest).IsNil() {
 		return errors.New("JSON target must be a pointer")
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
-	if err := checkValue(d, reflect.ValueOf(dest).Elem(), false); err != nil {
+	value := reflect.New(t.Elem()).Elem()
+	if err := checkValue(d, value, false); err != nil {
 		return err
 	}
 	if _, err := d.Token(); err != io.EOF {
 		return errors.New("unexpected trailing JSON data")
 	}
+	reflect.ValueOf(dest).Elem().Set(value)
 	return nil
 }
 
