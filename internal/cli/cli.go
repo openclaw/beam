@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/openclaw/beam/internal/adapter"
-	"github.com/openclaw/beam/internal/clean"
+	"github.com/openclaw/beam/internal/cleanstdio"
 	"github.com/openclaw/beam/internal/packet"
 )
 
@@ -209,29 +209,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		}
 		return call[adapter.ListResult](ctx, src, adapter.Request{Op: "list", Cursor: o.values["cursor"], Limit: limit})
 	case "clean":
-		if o.values["protocol"] != "1" {
-			return nil, adapter.Fail("unsupported_version", "never", "use clean --protocol 1")
-		}
-		data, err := adapter.ReadBounded(in, clean.MaxCandidateBytes)
-		if err != nil {
-			return nil, err
-		}
-		c, err := clean.ParseCandidate(data)
-		if err != nil {
-			return nil, err
-		}
-		p, report, err := clean.Build(c, o.clean)
-		if err != nil {
-			return nil, err
-		}
-		b, err := packet.Marshal(p)
-		if err != nil {
-			return nil, err
-		}
-		if err := json.NewEncoder(stderr).Encode(report); err != nil {
-			return nil, err
-		}
-		return nil, save("-", b, out)
+		return nil, cleanstdio.Run(o.values["protocol"], in, out, stderr, o.clean)
 	case "pack", "push":
 		p, b, report, err := a.pack(ctx, reg, o, in)
 		if err != nil {
