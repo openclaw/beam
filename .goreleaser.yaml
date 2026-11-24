@@ -29,6 +29,7 @@ archives:
     files:
       - LICENSE
       - README.md
+      - integrations/skill/SKILL.md
 checksum:
   name_template: SHA256SUMS
 changelog:
