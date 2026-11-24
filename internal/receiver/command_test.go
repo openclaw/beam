@@ -90,22 +90,18 @@ type routeFixture struct {
 	listCalls int
 }
 
-func (s *routeFixture) Call(_ context.Context, method string, _ any) (json.RawMessage, error) {
-	if method == "sessions.catalog.route" {
-		if !s.access {
-			return json.RawMessage("null"), nil
-		}
-		return json.RawMessage(`{"catalogId":"beam","routeSegment":"beam","methods":{"list":"beam.owned.list"}}`), nil
-	}
-	if method != "beam.owned.list" {
-		return nil, fmt.Errorf("unexpected method %s", method)
+func (s *routeFixture) ListRoute(_ context.Context, segment, prefix string) (string, json.RawMessage, error) {
+	const catalog = "external-team-catalog"
+	if !s.access || segment != "beam" || prefix != fixtureID[:12] {
+		return "", nil, fmt.Errorf("unavailable")
 	}
 	s.listCalls++
 	cursor := ""
 	if s.cursor {
 		cursor = "more"
 	}
-	return json.Marshal(map[string]any{"catalogs": []any{map[string]any{"id": "beam", "shareRoute": map[string]string{"routeSegment": "beam", "hostId": "gateway"}, "hosts": []any{map[string]any{"hostId": "gateway", "nextCursor": cursor, "sessions": []any{map[string]string{"threadId": fixtureID}}}}}}})
+	raw, err := json.Marshal(map[string]any{"catalogs": []any{map[string]any{"id": catalog, "shareRoute": map[string]string{"routeSegment": "beam", "hostId": "gateway"}, "hosts": []any{map[string]any{"hostId": "gateway", "nextCursor": cursor, "sessions": []any{map[string]string{"threadId": fixtureID}}}}}}})
+	return catalog, raw, err
 }
 func TestColdShortLinkUsesScopedLookupAndRejectsPartialMatch(t *testing.T) {
 	ctx := context.Background()

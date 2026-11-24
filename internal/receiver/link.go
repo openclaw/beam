@@ -8,8 +8,8 @@ import (
 	"github.com/openclaw/beam/internal/openclawcli"
 )
 
-type gatewayCaller interface {
-	Call(context.Context, string, any) (json.RawMessage, error)
+type routeLister interface {
+	ListRoute(context.Context, string, string) (string, json.RawMessage, error)
 }
 
 func (c *Client) resolveHuman(ctx context.Context, raw, profile string) (Publication, error) {
@@ -70,24 +70,8 @@ func (c *Client) resolveHuman(ctx context.Context, raw, profile string) (Publica
 	return pub, nil
 }
 
-func resolvePrefix(ctx context.Context, gw gatewayCaller, prefix string) (string, error) {
-	var route struct {
-		CatalogID    string            `json:"catalogId"`
-		RouteSegment string            `json:"routeSegment"`
-		Methods      map[string]string `json:"methods"`
-	}
-	raw, err := gw.Call(ctx, "sessions.catalog.route", map[string]string{"routeSegment": "beam"})
-	if err != nil {
-		return "", err
-	}
-	if json.Unmarshal(raw, &route) != nil || route.CatalogID != "beam" || route.RouteSegment != "beam" {
-		return "", failure("unavailable", "never")
-	}
-	method := route.Methods["list"]
-	if method != "beam.owned.list" && method != "sessions.catalog.list" {
-		return "", failure("unavailable", "never")
-	}
-	raw, err = gw.Call(ctx, method, map[string]any{"catalogId": "beam", "search": prefix, "limitPerHost": 2})
+func resolvePrefix(ctx context.Context, gw routeLister, prefix string) (string, error) {
+	catalogID, raw, err := gw.ListRoute(ctx, "beam", prefix)
 	if err != nil {
 		return "", err
 	}
@@ -115,7 +99,7 @@ func resolvePrefix(ctx context.Context, gw gatewayCaller, prefix string) (string
 	var id string
 	catalogs, hosts := 0, 0
 	for _, cat := range data.Catalogs {
-		if cat.ID != "beam" || cat.ShareRoute.RouteSegment != "beam" {
+		if cat.ID != catalogID || cat.ShareRoute.RouteSegment != "beam" {
 			continue
 		}
 		catalogs++

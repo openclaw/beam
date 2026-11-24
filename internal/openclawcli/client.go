@@ -184,6 +184,10 @@ func (c *Client) Call(ctx context.Context, method string, params any) (json.RawM
 	default:
 		return nil, fmt.Errorf("unsupported OpenClaw method %q", method)
 	}
+	return c.callRegistered(ctx, method, params)
+}
+
+func (c *Client) callRegistered(ctx context.Context, method string, params any) (json.RawMessage, error) {
 	body, err := json.Marshal(params)
 	if err != nil {
 		return nil, err
