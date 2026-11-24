@@ -8,7 +8,7 @@ read_when:
 
 # Standalone Beam and OpenClaw session portability
 
-**Status.** The standalone CLI, cleaner and adapters have executable contracts and conformance tests. The OpenClaw sections describe the receiver and SDK changes required to qualify the full integration. The design baseline is OpenClaw `b9ef0d7fca28` and the released agent-skills sender `1fa548f4ad81`. The [harness matrix](https://openclaw.github.io/beam/#support) records tested versions. The [release criteria](#release-acceptance) apply to a packaged distribution.
+**Status.** [Beam v0.1.0](https://github.com/openclaw/beam/releases/tag/v0.1.0) is the first standalone CLI release. Its cleaner and adapters have executable contracts and conformance tests. The OpenClaw sections distinguish installed candidate behavior, changes merged on main, and integration targets. The design baseline is OpenClaw `b9ef0d7fca28` and the released agent-skills sender `1fa548f4ad81`. The [harness matrix](https://openclaw.github.io/beam/#support) records tested versions. The [release criteria](#release-acceptance) apply to a packaged distribution.
 
 ## Operator experience
 
@@ -72,7 +72,7 @@ integrations/                 target-native hook/SDK bridges and compatibility s
 site/                         one static page and links to release artifacts
 ```
 
-Ship signed or verifiably checksummed native archives for macOS, Linux, and Windows on supported architectures. Start from the [Crabbox Go release matrix](https://github.com/openclaw/crabbox/blob/dd0bd80cc3a5b1bd897e749805a9a49a91565e76/.goreleaser.yaml#L18-L35). Publish immutable schemas and a small generated TypeScript validator for the connector. Keep the cleaner in the executable. Package any target-native helper with its adapter. Document which helper uses the target's installed runtime.
+Beam v0.1.0 publishes CLI archives for macOS, Linux, and Windows on x64 and arm64. The release includes `SHA256SUMS`, platform cleaner executables, and manifests. The version tag pins the schemas and generated TypeScript packet validator consumed by the connector. Target-native helpers ship with their adapters. [Native downloads and checksums](https://github.com/openclaw/beam/releases/tag/v0.1.0) · [Versioned schemas](https://github.com/openclaw/beam/tree/v0.1.0/schema)
 
 For the bundled connector, receive, view, and continue use the installed plugin and its validator. Package the matching native executable as a platform asset for outbound cleaning and mirroring on supported OpenClaw distributions. Resolve and verify it during setup, with an observable capability status. Test enablement offline on the packaged distribution. Source-only or unsupported platforms can still receive and should report the exact missing outbound capability. An official catalog listing alone cannot satisfy one-command enablement because the [enable lifecycle](https://github.com/openclaw/openclaw/blob/b9ef0d7fca28cfea8dec4472d4527d98c40d7ba2/src/plugins/management-mutations.ts#L342-L349) looks up an installed plugin.
 
