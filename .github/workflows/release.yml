@@ -50,6 +50,15 @@ jobs:
           name: native-packages
           path: release-assets/
           if-no-files-found: error
+      - name: Make the standalone cleaners available to host integration tests
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gateway-cleaners
+          path: |
+            release-assets/beam-clean_*.gz
+            release-assets/cleaners.json
+          if-no-files-found: error
   harnesses:
     needs: build
     runs-on: ubuntu-24.04
