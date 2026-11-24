@@ -272,6 +272,8 @@ Errors return `{ok:false,error:{code,retry,message},requestId?}` without transcr
 
 ### Journal and failure recovery
 
+A complete HTTP 400, 413, or 415 on the first v2 publish permits a corrected, newly reviewed packet when no other attempt could have committed. After an incomplete reply or an overlapping retry, rerun `beam share` with the original file to reconcile its bytes, request ID, and precondition. If Beam stopped abruptly during its first PUT, use the same or a newer binary for the first retry. Beam v0.1.0 can resume once that retry has made the frozen request available to it.
+
 1. Authenticate and discover operations. Inspect existing local intent before starting a new one. Publish the reviewed snapshot conditionally or obtain the identical accepted head. A snapshot write is reversible by updating it while unreleased. It does not retire the sender.
 2. Verify the receipt, `canRelease`, and digest. Persist the exact intended target, bytes, publication ID, revision and operation ID before attempting release. Fence concurrent local hooks for this source and endpoint. Persist any pending publication request identity before dispatch too, so a lost publication response is recoverable.
 3. Release conditionally. After acknowledgement, retain the receipt and clear pending content. A lost response leaves the source fenced. Query that same receiver and generation or replay the same intent. A definite refusal can end the intent only after establishing that generation is still writable. A failed preflight cannot strand a new source.

@@ -55,7 +55,7 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	if err := initialize(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialize Beam journal: %w", err)
 	}
@@ -64,6 +64,27 @@ func Open(path string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
+func initialize(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(schema); err != nil {
+		return err
+	}
+	var hasFirstBody bool
+	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM pragma_table_info('beam_pending') WHERE name='first_publish_body')`).Scan(&hasFirstBody); err != nil {
+		return err
+	}
+	if !hasFirstBody {
+		if _, err := tx.Exec(`ALTER TABLE beam_pending ADD COLUMN first_publish_body BLOB`); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 const schema = `
 CREATE TABLE IF NOT EXISTS handoffs (
  endpoint TEXT NOT NULL, beam_id TEXT NOT NULL, payload TEXT,
@@ -71,7 +92,7 @@ CREATE TABLE IF NOT EXISTS handoffs (
 );
 CREATE TABLE IF NOT EXISTS beam_pending (
  endpoint TEXT NOT NULL, kind TEXT NOT NULL, resource TEXT NOT NULL, id TEXT NOT NULL,
- body BLOB NOT NULL, condition TEXT NOT NULL, created INTEGER NOT NULL,
+ body BLOB NOT NULL, condition TEXT NOT NULL, created INTEGER NOT NULL, first_publish_body BLOB,
  PRIMARY KEY(endpoint,kind,resource), UNIQUE(endpoint,id)
 );
 CREATE TABLE IF NOT EXISTS beam_transfers (
@@ -92,8 +113,10 @@ type Pending struct {
 }
 
 func (s *Store) Pending(ctx context.Context, endpoint, kind, resource string) (Pending, bool, error) {
-	return scanPending(s.db.QueryRowContext(ctx, `SELECT id,body,condition,created FROM beam_pending WHERE endpoint=? AND kind=? AND resource=?`, endpoint, kind, resource), Pending{Endpoint: endpoint, Kind: kind, Resource: resource})
+	return scanPending(s.db.QueryRowContext(ctx, selectPending, endpoint, kind, resource), Pending{Endpoint: endpoint, Kind: kind, Resource: resource})
 }
+
+const selectPending = `SELECT id,coalesce(first_publish_body,body),condition,created FROM beam_pending WHERE endpoint=? AND kind=? AND resource=?`
 
 func scanPending(row *sql.Row, p Pending) (Pending, bool, error) {
 	var timestamp int64
@@ -112,10 +135,16 @@ func (s *Store) Begin(ctx context.Context, p Pending) (Pending, error) {
 		return Pending{}, err
 	}
 	defer tx.Rollback()
-	if _, err = tx.ExecContext(ctx, `INSERT INTO beam_pending(endpoint,kind,resource,id,body,condition,created) VALUES(?,?,?,?,?,?,?) ON CONFLICT(endpoint,kind,resource) DO NOTHING`, p.Endpoint, p.Kind, p.Resource, p.ID, p.Body, p.Condition, p.Created.Unix()); err != nil {
+	body, firstPublishBody := p.Body, []byte(nil)
+	if p.Kind == "publish" {
+		// An older client sends only when the legacy body equals its selected packet.
+		// Keep that slot empty until a second PUT makes first-attempt rejection ambiguous.
+		body, firstPublishBody = []byte{}, p.Body
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO beam_pending(endpoint,kind,resource,id,body,condition,created,first_publish_body) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(endpoint,kind,resource) DO NOTHING`, p.Endpoint, p.Kind, p.Resource, p.ID, body, p.Condition, p.Created.Unix(), firstPublishBody); err != nil {
 		return Pending{}, err
 	}
-	saved, _, err := scanPending(tx.QueryRowContext(ctx, `SELECT id,body,condition,created FROM beam_pending WHERE endpoint=? AND kind=? AND resource=?`, p.Endpoint, p.Kind, p.Resource), p)
+	saved, _, err := scanPending(tx.QueryRowContext(ctx, selectPending, p.Endpoint, p.Kind, p.Resource), p)
 	if err != nil {
 		return Pending{}, err
 	}
@@ -124,6 +153,18 @@ func (s *Store) Begin(ctx context.Context, p Pending) (Pending, error) {
 
 func (s *Store) Clear(ctx context.Context, p Pending) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM beam_pending WHERE endpoint=? AND kind=? AND resource=? AND id=?`, p.Endpoint, p.Kind, p.Resource, p.ID)
+	return err
+}
+
+// AllowPublishReplay restores the original bytes for all client versions. Once a
+// replay might dispatch, a refusal of one attempt cannot retire the intent.
+func (s *Store) AllowPublishReplay(ctx context.Context, p Pending) error {
+	return exactlyOne(s.db.ExecContext(ctx, `UPDATE beam_pending SET body=coalesce(first_publish_body,body),first_publish_body=NULL
+ WHERE endpoint=? AND kind='publish' AND resource=? AND id=?`, p.Endpoint, p.Resource, p.ID))
+}
+
+func (s *Store) ClearRejectedPublish(ctx context.Context, p Pending) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM beam_pending WHERE endpoint=? AND kind='publish' AND resource=? AND id=? AND first_publish_body IS NOT NULL`, p.Endpoint, p.Resource, p.ID)
 	return err
 }
 

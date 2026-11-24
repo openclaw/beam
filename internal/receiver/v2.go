@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"slices"
@@ -183,35 +184,59 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 		if err != nil {
 			return Publication{}, err
 		}
+		found = pending.ID != key
 	}
 	if !bytes.Equal(data, pending.Body) {
 		return Publication{}, failure("pending_publish_differs", "after_reconcile")
 	}
+	if found {
+		if err := s.AllowPublishReplay(ctx, pending); err != nil {
+			return Publication{}, err
+		}
+	}
+	pub, putErr := c.putSnapshot(ctx, pending, digest)
+	switch {
+	case putErr == nil || asHTTP(putErr, http.StatusPreconditionFailed):
+		// A receiver replays a committed success before checking its old precondition.
+		err = s.Clear(ctx, pending)
+	case !found && (asHTTP(putErr, 400) || asHTTP(putErr, 413) || asHTTP(putErr, 415)):
+		err = s.ClearRejectedPublish(ctx, pending)
+	case !found:
+		// The PUT may have reached its receiver, including when cancellation or
+		// a malformed receipt stops this caller. Let older clients replay it too.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		err = s.AllowPublishReplay(cleanup, pending)
+		if errors.Is(err, journal.ErrConflict) {
+			err = nil // A concurrent caller already completed the same intent.
+		}
+	}
+	if err != nil {
+		return Publication{}, err
+	}
+	return pub, putErr
+}
+
+func (c *Client) putSnapshot(ctx context.Context, pending journal.Pending, digest string) (Publication, error) {
 	h := http.Header{"Idempotency-Key": {pending.ID}}
 	if pending.Condition == "*" {
 		h.Set("If-None-Match", "*")
 	} else {
 		h.Set("If-Match", pending.Condition)
 	}
-	suffix := v2Path + "/snapshots/" + p.BeamID
+	suffix := v2Path + "/snapshots/" + pending.Resource
 	r, err := c.request(ctx, "PUT", suffix, pending.Body, h)
 	if err != nil {
-		// A definite precondition refusal made no change. A lost reply keeps the exact original request.
-		if asHTTP(err, 412) {
-			if dropErr := s.Clear(ctx, pending); dropErr != nil {
-				return Publication{}, dropErr
-			}
-		}
 		return Publication{}, err
 	}
 	var pub Publication
 	if json.Unmarshal(r.body, &pub) != nil || pub.Digest != digest || !slices.Contains([]string{"applied", "unchanged"}, pub.Disposition) {
 		return Publication{}, failure("invalid_publish_receipt", "after_reconcile")
 	}
-	if err := c.checkPublication(&pub, p.BeamID, suffix); err != nil {
+	if err := c.checkPublication(&pub, pending.Resource, suffix); err != nil {
 		return Publication{}, err
 	}
-	return pub, s.Clear(ctx, pending)
+	return pub, nil
 }
 
 type Release struct {
