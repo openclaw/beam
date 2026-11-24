@@ -105,7 +105,9 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 			}
 		}
 		return files, nil
-	}, Load: load}, nil
+	}, Load: func(ctx context.Context, f localhistory.File, branch string) (localhistory.History, error) {
+		return load(ctx, f, branch, cwd)
+	}}, nil
 }
 func project(f *os.File) (string, error) {
 	s := bufio.NewScanner(io.LimitReader(f, 4<<20))
@@ -132,12 +134,23 @@ type row struct {
 	}
 }
 
-func load(ctx context.Context, file localhistory.File, branch string) (localhistory.History, error) {
+func load(ctx context.Context, file localhistory.File, branch, cwd string) (localhistory.History, error) {
 	f, err := localhistory.Open(filepath.Dir(file.Path), filepath.Base(file.Path))
 	if err != nil {
 		return localhistory.History{}, err
 	}
 	defer f.Close()
+	// Session files can change between project discovery and the exact read.
+	caller, err := project(f)
+	if err != nil {
+		return localhistory.History{}, err
+	}
+	if filepath.Clean(caller) != cwd {
+		return localhistory.History{}, errors.New("selected Claude session project changed")
+	}
+	if _, err = f.Seek(0, io.SeekStart); err != nil {
+		return localhistory.History{}, err
+	}
 	var nodes []localhistory.Node
 	var latest string
 	partial := false

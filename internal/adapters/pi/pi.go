@@ -83,7 +83,9 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 			out = append(out, localhistory.File{ID: h.ID, Title: "Pi session " + h.ID, Path: filepath.Join(dir, name), Updated: st.ModTime()})
 		}
 		return out, nil
-	}, Load: load}, nil
+	}, Load: func(ctx context.Context, f localhistory.File, branch string) (localhistory.History, error) {
+		return load(ctx, f, branch, project)
+	}}, nil
 }
 
 type node struct {
@@ -94,7 +96,7 @@ type node struct {
 	}
 }
 
-func load(ctx context.Context, file localhistory.File, branch string) (localhistory.History, error) {
+func load(ctx context.Context, file localhistory.File, branch, project string) (localhistory.History, error) {
 	f, err := localhistory.Open(filepath.Dir(file.Path), filepath.Base(file.Path))
 	if err != nil {
 		return localhistory.History{}, err
@@ -105,7 +107,7 @@ func load(ctx context.Context, file localhistory.File, branch string) (localhist
 	err = localhistory.Lines(ctx, f, func(data []byte) error {
 		if !headerRead {
 			var h header
-			if json.Unmarshal(data, &h) != nil || h.Type != "session" || h.ID != file.ID {
+			if json.Unmarshal(data, &h) != nil || h.Type != "session" || h.ID != file.ID || filepath.Clean(h.Cwd) != project {
 				return errors.New("selected Pi session changed")
 			}
 			if h.Version != 2 && h.Version != 3 {
