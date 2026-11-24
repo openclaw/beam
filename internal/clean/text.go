@@ -43,8 +43,10 @@ var (
 
 func cleanText(s string, mask *regexp.Regexp, r *Report) string {
 	s = strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n"))
-	for _, re := range wrappers {
-		s = re.ReplaceAllStringFunc(s, func(string) string { r.Omissions++; return "" })
+	if strings.Contains(s, "<") {
+		for _, re := range wrappers {
+			s = re.ReplaceAllStringFunc(s, func(string) string { r.Omissions++; return "" })
+		}
 	}
 	if strings.HasPrefix(s, "# AGENTS.md instructions for ") || strings.HasPrefix(s, "Knowledge cutoff:") || strings.HasPrefix(s, "You are Codex,") {
 		return ""
@@ -77,6 +79,9 @@ func cleanText(s string, mask *regexp.Regexp, r *Report) string {
 	})
 	// Preserve public links unless credentials or encoded local path values
 	// occur in them. Never fetch a URL to determine how to display it.
+	if !strings.ContainsAny(s, `/\`) {
+		return strings.TrimSpace(s)
+	}
 	var out strings.Builder
 	end := 0
 	for _, loc := range urlPattern.FindAllStringIndex(s, -1) {
@@ -124,6 +129,11 @@ func unsafeQuery(u *url.URL) bool {
 }
 
 func redactLines(s string, r *Report) string {
+	// Both secret-key assignments and flags require one of these delimiters.
+	// Skip splitting and matching prose that cannot start a redacted line.
+	if !strings.ContainsAny(s, ":=") && !strings.Contains(s, "--") {
+		return s
+	}
 	lines := strings.Split(s, "\n")
 	out := lines[:0]
 	for i := 0; i < len(lines); i++ {
