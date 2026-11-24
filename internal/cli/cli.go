@@ -165,10 +165,11 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		return info, nil
 	case "doctor":
 		type detected struct {
-			ID           string                `json:"id"`
-			Ready        bool                  `json:"available"`
-			Capabilities *adapter.Capabilities `json:"capabilities,omitempty"`
-			Error        *adapter.Error        `json:"error,omitempty"`
+			ExecutableAvailable bool                  `json:"executableAvailable"`
+			ID                  string                `json:"id"`
+			Ready               bool                  `json:"available"`
+			Capabilities        *adapter.Capabilities `json:"capabilities,omitempty"`
+			Error               *adapter.Error        `json:"error,omitempty"`
 		}
 		ids := keys(reg)
 		rows := make([]detected, len(ids))
@@ -178,7 +179,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 				probe, cancel := context.WithTimeout(ctx, 8*time.Second)
 				defer cancel()
 				c, err := caps(probe, reg[id])
-				rows[i] = detected{ID: id, Ready: err == nil}
+				rows[i] = detected{ID: id, Ready: err == nil, ExecutableAvailable: err == nil && c.Version != "unavailable"}
 				if err == nil {
 					rows[i].Capabilities = &c
 				} else {
@@ -232,7 +233,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		}
 		return nil, save("-", b, out)
 	case "pack", "push":
-		p, b, report, err := a.pack(ctx, reg, o)
+		p, b, report, err := a.pack(ctx, reg, o, in)
 		if err != nil {
 			return nil, err
 		}

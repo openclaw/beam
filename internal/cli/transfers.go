@@ -140,11 +140,27 @@ func sourceSelection(o options) (string, error) {
 	return s, nil
 }
 
-func (a App) pack(ctx context.Context, reg Registry, o options) (packet.Packet, []byte, clean.Report, error) {
+func (a App) pack(ctx context.Context, reg Registry, o options, in io.Reader) (packet.Packet, []byte, clean.Report, error) {
 	var report clean.Report
 	s, err := sourceSelection(o)
 	if err != nil {
 		return packet.Packet{}, nil, report, err
+	}
+	if o.values["from"] == "file" {
+		if s == "-" {
+			data, err := adapter.ReadBounded(in, clean.MaxCandidateBytes)
+			if err != nil {
+				return packet.Packet{}, nil, report, err
+			}
+			return stdinSelection(data, o.clean)
+		}
+		if strings.EqualFold(filepath.Ext(s), ".json") {
+			data, err := loadInput(s, in, packet.MaxBytes)
+			if err != nil {
+				return packet.Packet{}, nil, report, err
+			}
+			return repack(data, o.clean)
+		}
 	}
 	src, err := a.selectAdapter(reg, o.values["from"])
 	if err != nil {
