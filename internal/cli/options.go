@@ -16,11 +16,11 @@ type options struct {
 }
 
 var optionsFor = map[string]string{
-	"capabilities": "json", "doctor": "json adapter", "adapter": "in adapter",
-	"list": "from cursor limit json adapter", "pack": "from session branch out omit redact json adapter",
-	"clean": "protocol omit redact", "inspect": "json", "render": "out",
+	"capabilities": "json", "doctor": "json adapter profile-dir endpoint", "adapter": "in adapter profile-dir endpoint",
+	"list": "from cursor limit json adapter profile-dir endpoint", "pack": "from session branch out omit redact json adapter profile-dir endpoint",
+	"clean": "protocol omit redact", "inspect": "json", "convert": "packet-version out json", "render": "out",
 	"open":    "in message mode operation-id request-id expect-digest json adapter out state",
-	"push":    "from session branch to mode message operation-id request-id expect-digest dry-run omit redact out json adapter state",
+	"push":    "from session branch to mode message operation-id request-id expect-digest dry-run omit redact out json adapter state profile-dir endpoint",
 	"resolve": "in handle json adapter", "send": "in handle request-id message json adapter state",
 	"lookup": "in operation-id json adapter state",
 }

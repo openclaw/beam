@@ -22,6 +22,7 @@ const usage = `Usage: beam COMMAND [options]
   beam pack --from HARNESS --session ID      Write a reviewed packet (--out FILE or stdout)
   beam clean --protocol 1                    Clean one selected history projection from stdin
   beam inspect FILE                          Show exact packet and its digest
+  beam convert FILE --packet-version 1       Prepare and preview an explicit v1 projection
   beam render FILE [--out FILE]              Render a packet as quoted Markdown
   beam open FILE --in HARNESS                Open an independent copy or reviewed reference
   beam push --from A --session ID --to B     Copy one selected conversation to another harness
@@ -148,7 +149,7 @@ func hasOption(args []string, prefix string) bool {
 }
 
 func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, in io.Reader, out, stderr io.Writer) (any, error) {
-	withFile := cmd == "inspect" || cmd == "render" || cmd == "open"
+	withFile := cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
 	if withFile && len(o.args) != 1 {
 		return nil, fmt.Errorf("%s requires exactly one file or -", cmd)
 	}
@@ -262,13 +263,46 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 			return nil, err
 		}
 		return open(ctx, dst, p, o)
-	case "inspect", "render", "open":
+	case "inspect", "render", "open", "convert":
 		p, b, err := inputPacket(o.args[0], in)
 		if err != nil {
 			return nil, err
 		}
 		if err := matchDigest(o.values["expect-digest"], b); err != nil {
 			return nil, err
+		}
+		if cmd == "convert" {
+			var outBytes []byte
+			switch o.values["packet-version"] {
+			case "1":
+				outBytes, err = packet.V1Projection(p)
+			case "2":
+				outBytes, err = packet.Marshal(p)
+			default:
+				return nil, fmt.Errorf("choose --packet-version 1 or 2")
+			}
+			if err != nil {
+				return nil, err
+			}
+			if o.values["packet-version"] == "1" {
+				for _, item := range p.Items {
+					if item.Speaker != "" {
+						fmt.Fprintln(stderr, "v1 omits historical speaker aliases")
+						break
+					}
+				}
+			}
+			fmt.Fprintln(stderr, packet.Digest(outBytes))
+			if o.values["json"] != "" {
+				if name := o.values["out"]; name != "" && name != "-" {
+					if err := save(name, outBytes, out); err != nil {
+						return nil, err
+					}
+					return map[string]any{"path": name, "digest": packet.Digest(outBytes)}, nil
+				}
+				return map[string]any{"packet": json.RawMessage(outBytes), "digest": packet.Digest(outBytes)}, nil
+			}
+			return nil, save(o.values["out"], outBytes, out)
 		}
 		if cmd == "inspect" {
 			if o.values["json"] != "" {

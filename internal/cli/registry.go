@@ -16,6 +16,7 @@ import (
 type Registry map[string]adapter.Adapter
 
 type App struct {
+	OpenClaw func(profileDir, endpoint string) adapter.Adapter
 	Version  string
 	Adapters Registry
 	Dynamic  func(string) adapter.Adapter
@@ -28,6 +29,9 @@ var identifier = regexp.MustCompile("^[a-z0-9][a-z0-9._-]{0,31}$")
 
 func (a App) registry(o options) (Registry, error) {
 	r := Registry{"file": file.Adapter{OutputPath: o.values["out"]}}
+	if a.OpenClaw != nil {
+		r["openclaw"] = a.OpenClaw(o.values["profile-dir"], o.values["endpoint"])
+	}
 	for k, v := range a.Adapters {
 		r[k] = v
 	}
