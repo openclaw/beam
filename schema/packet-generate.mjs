@@ -25,8 +25,12 @@ function conditions(s, value) {
   if (s.type === "boolean") return ["typeof " + value + ' === "boolean"'];
   if (s.type === "string") {
     const checks = ["typeof " + value + ' === "string"'];
-    if (s.minLength) checks.push(value + ".length >= " + s.minLength);
-    if (s.maxLength) checks.push(value + ".length <= " + s.maxLength);
+    if (s.minLength !== undefined && s.minLength === s.maxLength) {
+      checks.push(value + ".length === " + s.minLength);
+    } else {
+      if (s.minLength) checks.push(value + ".length >= " + s.minLength);
+      if (s.maxLength !== undefined) checks.push(value + ".length <= " + s.maxLength);
+    }
     if (s.pattern) checks.push(regex(s.pattern) + ".test(" + value + ")");
     if (s.not?.pattern) checks.push("!" + regex(s.not.pattern) + ".test(" + value + ")");
     if (s.format === "date-time") checks.push("isInstant(" + value + ")");

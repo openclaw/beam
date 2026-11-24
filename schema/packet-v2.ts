@@ -27,41 +27,67 @@ function record(value: unknown): value is Record<string, unknown> {
 
 function isInstant(text: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)(?![\s\S])/.exec(text);
-  if (!m) return false;
-  const year = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+  if (!m) {
+    return false;
+  }
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1];
+  const lastDay = days[month - 1];
+  return lastDay !== undefined && day >= 1 && day <= lastDay;
 }
 
 // JSON.parse has already checked syntax. Walk the raw string tokens remaining
 // after decoding to catch duplicate (including escaped) keys and lone surrogates.
 function distinctKeysAndScalars(text: string): boolean {
   const stack: (Set<string> | undefined)[] = [];
-  const tokens = /"(?:[^"\\]|\\.)*"|[{}\[\]]/g;
+  const tokens = /"(?:[^"\\]|\\.)*"|[{}[\]]/g;
   for (const token of text.matchAll(tokens)) {
     const value = token[0];
-    if (value === "{") { stack.push(new Set()); continue; }
-    if (value === "[") { stack.push(undefined); continue; }
-    if (value === "}" || value === "]") { stack.pop(); continue; }
+    if (value === "{") {
+      stack.push(new Set());
+      continue;
+    }
+    if (value === "[") {
+      stack.push(undefined);
+      continue;
+    }
+    if (value === "}" || value === "]") {
+      stack.pop();
+      continue;
+    }
     const decoded: string = JSON.parse(value);
-    if (/[\uD800-\uDFFF]/u.test(decoded)) return false;
-    let at = token.index! + value.length;
-    while (at < text.length && /[ \t\n\r]/.test(text[at])) at++;
-    if (text[at] !== ":") continue;
+    if (/[\uD800-\uDFFF]/u.test(decoded)) {
+      return false;
+    }
+    let at = token.index + value.length;
+    while (/[ \t\n\r]/.test(text.charAt(at))) {
+      at++;
+    }
+    if (text.charAt(at) !== ":") {
+      continue;
+    }
     const keys = stack[stack.length - 1];
-    if (!keys || keys.has(decoded)) return false;
+    if (!keys || keys.has(decoded)) {
+      return false;
+    }
     keys.add(decoded);
   }
   return true;
 }
 
 export function parseBeamPacket(bytes: Uint8Array): BeamPacket {
-  if (bytes.byteLength > MAX_PACKET_BYTES) throw new Error("Beam packet exceeds 56 KiB");
+  if (bytes.byteLength > MAX_PACKET_BYTES) {
+    throw new Error("Beam packet exceeds 56 KiB");
+  }
   try {
-    const text = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes);
+    const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
     const value: unknown = JSON.parse(text);
-    if (distinctKeysAndScalars(text) && conforms(value)) return value;
+    if (distinctKeysAndScalars(text) && conforms(value)) {
+      return value;
+    }
   } catch {
     // JSON.parse error strings may contain transcript text. Keep it out of diagnostics.
   }
@@ -72,7 +98,7 @@ function conforms(value: unknown): value is BeamPacket {
   return record(value) &&
     Object.keys(value).every((key) => ["version","beamId","source","title","updatedAt","completed","truncated","sourceModel","items"].includes(key)) &&
     value.version === 2 &&
-    typeof value.beamId === "string" && value.beamId.length >= 32 && value.beamId.length <= 32 && /^[0-9a-f]{32}(?![\s\S])/u.test(value.beamId) &&
+    typeof value.beamId === "string" && value.beamId.length === 32 && /^[0-9a-f]{32}(?![\s\S])/u.test(value.beamId) &&
     typeof value.source === "string" && value.source.length >= 1 && value.source.length <= 32 && /^[a-z0-9._-]+(?![\s\S])/u.test(value.source) &&
     typeof value.title === "string" && value.title.length <= 160 && /\S/u.test(value.title) &&
     typeof value.updatedAt === "string" && value.updatedAt.length <= 64 && isInstant(value.updatedAt) &&

@@ -18,6 +18,12 @@
     "valid": false
   },
   {
+    "name": "duplicate key with JSON whitespace",
+    "from": "\"source\":\"codex\"",
+    "to": "\"source\":\"codex\",\"source\" \t\r\n: \"codex\"",
+    "valid": false
+  },
+  {
     "name": "escaped duplicate key",
     "from": "\"type\":\"userMessage\"",
     "to": "\"type\":\"userMessage\",\"\\u0074ype\":\"userMessage\"",
@@ -88,6 +94,12 @@
     "from": "CSV importer",
     "to": "\\\\uD800",
     "valid": true
+  },
+  {
+    "name": "month outside calendar",
+    "from": "2024-02-29",
+    "to": "2024-13-01",
+    "valid": false
   },
   {
     "name": "invalid calendar",
