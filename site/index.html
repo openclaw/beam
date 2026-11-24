@@ -44,7 +44,7 @@ beam doctor --json</code></pre>
 beam pack --from codex --session "$SESSION_ID" --out task.beam.json
 beam inspect task.beam.json
 beam open task.beam.json --in opencode</code></pre>
-      <div><h3>Connect OpenClaw</h3><p>On a Gateway build with the Beam receiver, enable the plugin and restart the Gateway.</p></div>
+      <div><h3>Connect OpenClaw</h3><p>The v2 receiver is available on OpenClaw main from <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">7071b82</a>. The tagged OpenClaw 2026.11.8 provides the v1 endpoint. Enable Beam and restart the Gateway.</p></div>
       <pre><code>openclaw plugins enable beam
 openclaw gateway restart</code></pre>
       <div><h3>Share a reviewed packet</h3><p>On your machine, use the Gateway’s URL. Add <code>--cloudflare-login</code> for Cloudflare Access with the installed <code>cloudflared</code> helper. Supply a separate Gateway bearer through <code>BEAM_AUTH_TOKEN</code> when required.</p></div>
@@ -62,7 +62,8 @@ openclaw gateway restart</code></pre>
           <tr><th scope="row">Gemini CLI 0.45.0</th><td>Load a staged session file, then complete login in Gemini. The CLI assigned a new session ID before login.</td></tr>
           <tr><th scope="row">acpx 0.22.0</th><td>Read a selected ACP session and stage a reference. Continue manually in the target agent. Bound sends require an acpx version that can verify the selected record.</td></tr>
           <tr><th scope="row">OpenClaw 2026.6.11</th><td>Export the selected session through an authenticated Gateway. The wrong-token profile was denied. History without completeness evidence is marked truncated.</td></tr>
-          <tr><th scope="row">OpenClaw candidate with the Codex plugin</th><td>Two Gateways mirrored a selected native Codex 0.169.0 session on Linux. The publisher rotated credentials and resumed updates. A teammate could read the session, and releasing it stopped future updates. This requires the candidate Gateway and its separately installed <code>@openclaw/codex</code> plugin. <a href="https://github.com/openclaw/beam/blob/602ac10dfcd9c0595196f58893f62bba1430a24f/conformance/e2e/codex_mirror_test.go">Integration test ↗</a></td></tr>
+          <tr><th scope="row">OpenClaw main receiver</th><td>A guest opened private Beam links and continued once in Chromium. Disabling Beam cleared the transcript and removed the route on the same connection. In a separate retry test, the original send and two retries produced one model turn in total. <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#qualification-on-openclaw-main">Installed Gateway tests ↗</a></td></tr>
+          <tr><th scope="row">OpenClaw with the Codex plugin</th><td>Two installed Gateway builds mirrored a selected native Codex 0.169.0 session on Linux. The publisher rotated credentials and resumed updates. A teammate could read the session, and releasing it stopped future updates. The source Gateway needs the separately installed <code>@openclaw/codex</code> plugin. The receiver only needs Beam enabled. <a href="https://github.com/openclaw/beam/blob/602ac10dfcd9c0595196f58893f62bba1430a24f/conformance/e2e/codex_mirror_test.go">Integration test ↗</a></td></tr>
           <tr><th scope="row">Local file</th><td>Read a selected UTF-8 file or render a Markdown reference for manual import.</td></tr>
         </tbody>
       </table>
