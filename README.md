@@ -11,7 +11,11 @@ beam --version
 beam doctor --json
 ```
 
-To verify a download with GitHub CLI, run `gh attestation verify ARCHIVE --repo openclaw/beam`. To build the release from source, run `go install github.com/openclaw/beam/cmd/beam@v0.1.0` with a current Go toolchain. The source supports Go 1.25 or newer.
+To verify a download with GitHub CLI, run `gh attestation verify ARCHIVE --repo openclaw/beam`. To build v0.1.0 from source with its release version embedded, use Go 1.25 or newer.
+
+```sh
+go install -ldflags="-X main.version=0.1.0" github.com/openclaw/beam/cmd/beam@v0.1.0
+```
 
 Run the following in the source project. Choose a session ID from the list.
 

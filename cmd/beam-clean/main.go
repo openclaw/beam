@@ -7,16 +7,17 @@ import (
 	"slices"
 
 	"github.com/openclaw/beam/internal/adapter"
+	"github.com/openclaw/beam/internal/buildversion"
 	"github.com/openclaw/beam/internal/clean"
 	"github.com/openclaw/beam/internal/cleanstdio"
 )
 
-var version = "dev"
+var version string
 
 func main() {
 	args := os.Args[1:]
 	if slices.Equal(args, []string{"--version"}) {
-		fmt.Println(version)
+		fmt.Println(buildversion.Resolve(version))
 		return
 	}
 	if len(args) != 3 || args[0] != "clean" || args[1] != "--protocol" {

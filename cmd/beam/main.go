@@ -6,7 +6,7 @@ import (
 	"os/signal"
 )
 
-var version = "dev"
+var version string
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
