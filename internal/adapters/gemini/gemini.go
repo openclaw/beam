@@ -37,8 +37,12 @@ func (a Adapter) reader() (localhistory.Reader, error) {
 	if err != nil {
 		return localhistory.Reader{}, err
 	}
-	if p, e := filepath.EvalSymlinks(project); e == nil {
-		project = p
+	// Gemini hashes the native process.cwd() spelling. Windows folds case only for
+	// projects.json lookup; resolving symlinks there can change the hash input.
+	if runtime.GOOS != "windows" {
+		if p, e := filepath.EvalSymlinks(project); e == nil {
+			project = p
+		}
 	}
 	home := a.ConfigDir
 	if home == "" {

@@ -8,6 +8,7 @@ import (
 	"github.com/openclaw/beam/internal/adapter"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -29,7 +30,9 @@ func TestExportKeepsOnlyVisibleText(t *testing.T) {
 }
 func TestNativeProjectSelectionRewindsAndPatches(t *testing.T) {
 	cwd := t.TempDir()
-	cwd, _ = filepath.EvalSymlinks(cwd)
+	if runtime.GOOS != "windows" {
+		cwd, _ = filepath.EvalSymlinks(cwd)
+	}
 	sum := sha256.Sum256([]byte(cwd))
 	hash := hex.EncodeToString(sum[:])
 	root := t.TempDir()
@@ -37,7 +40,11 @@ func TestNativeProjectSelectionRewindsAndPatches(t *testing.T) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
-	registry, _ := json.Marshal(map[string]any{"projects": map[string]string{cwd: "fixture"}})
+	registryPath := cwd
+	if runtime.GOOS == "windows" {
+		registryPath = strings.ToLower(registryPath)
+	}
+	registry, _ := json.Marshal(map[string]any{"projects": map[string]string{registryPath: "fixture"}})
 	os.WriteFile(filepath.Join(root, "projects.json"), registry, 0600)
 	text := strings.Join([]string{`{"sessionId":"selected","projectHash":"` + hash + `","lastUpdated":"2026-11-24T00:00:00Z"}`, `{"id":"a","type":"user","content":"initial"}`, `{"id":"b","type":"gemini","content":[{"text":"abandoned"}]}`, `{"$rewindTo":"b"}`, `{"id":"c","type":"gemini","content":[{"text":"bad"}]}`, `{"$patch":{"id":"c","content":[{"thought":true,"text":"private"},{"text":"corrected answer"}]}}`}, "\n")
 	if err := os.WriteFile(filepath.Join(dir, "session-native.jsonl"), []byte(text), 0600); err != nil {
