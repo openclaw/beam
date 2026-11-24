@@ -50,7 +50,8 @@ type Publication struct {
 	Digest        string `json:"digest"`
 	Disposition   string `json:"disposition,omitempty"`
 	URL           string `json:"url"`
-	APIURL        string `json:"apiUrl"`
+	APIURL        string `json:"apiUrl,omitempty"`
+	SnapshotURL   string `json:"snapshotUrl,omitempty"`
 	CanRelease    bool   `json:"canRelease"`
 	State         string `json:"state,omitempty"`
 }
@@ -58,22 +59,39 @@ type Publication struct {
 var etagRE = regexp.MustCompile(`^"[!#-~]{1,254}"$`)
 var digestRE = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
 
-func (c *Client) checkPublication(pub *Publication, id string) error {
-	if pub.BeamID != id || !opaqueRE.MatchString(pub.PublicationID) || !etagRE.MatchString(pub.Revision) || strings.Contains(pub.Revision[1:len(pub.Revision)-1], "\"") || !digestRE.MatchString(pub.Digest) {
+func (c *Client) checkPublication(pub *Publication, id, suffix string) error {
+	if pub.BeamID != id || !etagRE.MatchString(pub.Revision) || !digestRE.MatchString(pub.Digest) {
 		return failure("invalid_publication", "after_reconcile")
 	}
-	view, err := trustedLink(c.base, pub.URL, false)
+	view, err := c.responseLink(suffix, pub.URL)
 	if err != nil {
 		return err
 	}
-	api, err := trustedLink(c.base, pub.APIURL, false)
+	pub.URL = view.String()
+	if pub.State == "legacy_unbound" {
+		if !strings.HasSuffix(suffix, "/head") || pub.CanRelease || pub.PublicationID != "" || pub.APIURL != "" {
+			return failure("invalid_publication", "after_reconcile")
+		}
+		snapshot, err := c.responseLink(suffix, pub.SnapshotURL)
+		if err != nil {
+			return err
+		}
+		if snapshot.Path != c.base.Path+v2Path+"/snapshots/"+id+"/snapshot" {
+			return failure("invalid_snapshot_link", "never")
+		}
+		pub.SnapshotURL = snapshot.String()
+		return nil
+	}
+	if !opaqueRE.MatchString(pub.PublicationID) || pub.SnapshotURL != "" {
+		return failure("invalid_publication", "after_reconcile")
+	}
+	api, err := c.responseLink(suffix, pub.APIURL)
 	if err != nil {
 		return err
 	}
 	if api.Path != c.base.Path+v2Path+"/publications/"+pub.PublicationID {
 		return failure("invalid_publication_link", "never")
 	}
-	pub.URL = view.String()
 	pub.APIURL = api.String()
 	return nil
 }
@@ -91,7 +109,8 @@ func (c *Client) publicationID(link string) (string, error) {
 }
 
 func (c *Client) head(ctx context.Context, id string) (Publication, bool, error) {
-	r, err := c.request(ctx, "GET", v2Path+"/snapshots/"+id+"/head", nil, nil)
+	suffix := v2Path + "/snapshots/" + id + "/head"
+	r, err := c.request(ctx, "GET", suffix, nil, nil)
 	if asHTTP(err, 404) {
 		return Publication{}, false, nil
 	}
@@ -102,7 +121,7 @@ func (c *Client) head(ctx context.Context, id string) (Publication, bool, error)
 	if json.Unmarshal(r.body, &pub) != nil {
 		return pub, false, failure("invalid_head", "after_reconcile")
 	}
-	if err := c.checkPublication(&pub, id); err != nil {
+	if err := c.checkPublication(&pub, id, suffix); err != nil {
 		return pub, false, err
 	}
 	return pub, true, nil
@@ -150,7 +169,7 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 			if head.State == "released" || head.State == "ready" || head.State == "released_unbound" {
 				return Publication{}, failure("source_retired", "after_reconcile")
 			}
-			if head.Digest == digest {
+			if head.State != "legacy_unbound" && head.Digest == digest {
 				head.Disposition = "unchanged"
 				return head, nil
 			}
@@ -174,7 +193,8 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 	} else {
 		h.Set("If-Match", pending.Condition)
 	}
-	r, err := c.request(ctx, "PUT", v2Path+"/snapshots/"+p.BeamID, pending.Body, h)
+	suffix := v2Path + "/snapshots/" + p.BeamID
+	r, err := c.request(ctx, "PUT", suffix, pending.Body, h)
 	if err != nil {
 		// A definite precondition refusal made no change. A lost reply keeps the exact original request.
 		if asHTTP(err, 412) {
@@ -188,7 +208,7 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 	if json.Unmarshal(r.body, &pub) != nil || pub.Digest != digest || !slices.Contains([]string{"applied", "unchanged"}, pub.Disposition) {
 		return Publication{}, failure("invalid_publish_receipt", "after_reconcile")
 	}
-	if err := c.checkPublication(&pub, p.BeamID); err != nil {
+	if err := c.checkPublication(&pub, p.BeamID, suffix); err != nil {
 		return Publication{}, err
 	}
 	return pub, s.Clear(ctx, pending)
@@ -253,7 +273,8 @@ func (c *Client) Handoff(ctx context.Context, id string, data []byte) (Release, 
 	body, _ := json.Marshal(struct {
 		Digest string `json:"digest"`
 	}{tr.Digest})
-	r, err := c.request(ctx, "POST", v2Path+"/publications/"+tr.Generation+"/release", body, http.Header{"If-Match": {tr.Revision}, "Idempotency-Key": {tr.ID}})
+	suffix := v2Path + "/publications/" + tr.Generation + "/release"
+	r, err := c.request(ctx, "POST", suffix, body, http.Header{"If-Match": {tr.Revision}, "Idempotency-Key": {tr.ID}})
 	if err != nil {
 		if asHTTP(err, 412) && len(tr.Receipt) == 0 {
 			head, exists, readErr := c.head(ctx, id)
@@ -269,7 +290,7 @@ func (c *Client) Handoff(ctx context.Context, id string, data []byte) (Release, 
 	if json.Unmarshal(r.body, &out) != nil || out.PublicationID != tr.Generation || out.Revision != tr.Revision || out.State != "released" {
 		return out, failure("invalid_release_receipt", "after_reconcile")
 	}
-	view, err := trustedLink(c.base, out.URL, false)
+	view, err := c.responseLink(suffix, out.URL)
 	if err != nil {
 		return out, err
 	}
@@ -294,14 +315,25 @@ func (c *Client) Pull(ctx context.Context, link string) ([]byte, error) {
 	if err = require(caps, "read"); err != nil {
 		return nil, err
 	}
-	r, err := c.request(ctx, "GET", v2Path+"/publications/"+id+"/snapshot", nil, nil)
+	return c.pullSnapshot(ctx, v2Path+"/publications/"+id+"/snapshot", Publication{})
+}
+
+// A pre-generation head is readable by revision only. Keep the head's digest
+// and ETag through the GET so a concurrent adoption cannot change the snapshot.
+func (c *Client) pullSnapshot(ctx context.Context, suffix string, head Publication) ([]byte, error) {
+	h := http.Header{}
+	if head.Revision != "" {
+		h.Set("If-Match", head.Revision)
+	}
+	r, err := c.request(ctx, "GET", suffix, nil, h)
 	if err != nil {
 		return nil, err
 	}
-	if !etagRE.MatchString(r.header.Get("ETag")) || r.header.Get("Beam-Digest") != packet.Digest(r.body) {
+	revision, digest := r.header.Get("ETag"), r.header.Get("Beam-Digest")
+	if !etagRE.MatchString(revision) || digest != packet.Digest(r.body) || (head.Revision != "" && (revision != head.Revision || digest != head.Digest)) {
 		return nil, failure("invalid_snapshot_digest", "never")
 	}
-	if _, err := packet.Parse(r.body); err != nil {
+	if p, err := packet.Parse(r.body); err != nil || (head.BeamID != "" && head.BeamID != p.BeamID) {
 		return nil, failure("invalid_packet", "never")
 	}
 	return r.body, nil

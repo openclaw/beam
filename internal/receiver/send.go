@@ -133,13 +133,12 @@ func (c *Client) Continue(ctx context.Context, link string, in Instruction) (Sen
 		if err == nil {
 			return finish(receipt)
 		}
-		if !asHTTP(err, 404) {
-			return SendReceipt{}, err
-		}
-		age := time.Now().Unix() - p.Created.Unix()
-		if age < 0 || age >= caps.SendReceiptRetentionSeconds {
+		// A hidden, expired or unrecorded request is indistinguishable from
+		// a changed principal. Never send anew on an ambiguous status lookup.
+		if asHTTP(err, 404) || asHTTP(err, 410) {
 			return SendReceipt{}, failure("needs_reconciliation", "after_reconcile")
 		}
+		return SendReceipt{}, err
 	}
 	r, err := c.request(ctx, "POST", v2Path+"/publications/"+publication+"/continue", data, http.Header{"Idempotency-Key": {p.ID}})
 	if err != nil {

@@ -285,6 +285,19 @@ func trustedLink(base *url.URL, raw string, allowQuery bool) (*url.URL, error) {
 	}
 	return u, nil
 }
+
+// Resolve response references against the request URI. A reverse proxy may
+// strip the external mount prefix before forwarding the request to the receiver.
+func (c *Client) responseLink(suffix, raw string) (*url.URL, error) {
+	ref, err := url.Parse(raw)
+	if err != nil || raw == "" || ref.RawPath != "" || ref.Opaque != "" || ref.User != nil || strings.HasPrefix(raw, "//") || strings.Contains(raw, "\\") || strings.Contains(raw, "#") {
+		return nil, failure("invalid_receiver_link", "never")
+	}
+	location := *c.base
+	location.Path += suffix
+	return trustedLink(c.base, location.ResolveReference(ref).String(), false)
+}
+
 func newID() (string, error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {

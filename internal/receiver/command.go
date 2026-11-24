@@ -275,15 +275,24 @@ func run(ctx context.Context, name string, args []string, stdin io.Reader, stdou
 			break
 		}
 		link := o.arg
+		var head Publication
 		if _, machineErr := c.publicationID(link); machineErr != nil {
-			link, err = c.resolveHuman(ctx, link, o.profile)
+			head, err = c.resolveHuman(ctx, link, o.profile)
+			link = head.APIURL
+			if err == nil && head.State == "legacy_unbound" && name != "pull" {
+				err = failure("unbound_snapshot", "never")
+			}
 			if err != nil {
 				break
 			}
 		}
 		switch name {
 		case "pull":
-			raw, err = c.Pull(ctx, link)
+			if head.State == "legacy_unbound" {
+				raw, err = c.pullSnapshot(ctx, v2Path+"/snapshots/"+head.BeamID+"/snapshot", head)
+			} else {
+				raw, err = c.Pull(ctx, link)
+			}
 			if err != nil {
 				break
 			}

@@ -12,59 +12,62 @@ type gatewayCaller interface {
 	Call(context.Context, string, any) (json.RawMessage, error)
 }
 
-func (c *Client) resolveHuman(ctx context.Context, raw, profile string) (string, error) {
+func (c *Client) resolveHuman(ctx context.Context, raw, profile string) (Publication, error) {
 	u, err := trustedLink(c.base, raw, true)
 	if err != nil {
-		return "", err
+		return Publication{}, err
 	}
 	rel := strings.TrimPrefix(u.Path, c.base.Path+"/")
 	var id string
-	if name, ok := strings.CutPrefix(rel, "beam/"); ok {
+	// The externally mounted Control UI can have a separate path prefix.
+	segments := strings.Split(rel, "/")
+	if len(segments) >= 2 && segments[len(segments)-2] == "beam" {
+		name := segments[len(segments)-1]
 		match := prettyURL.FindStringSubmatch(name)
 		if len(match) != 3 || len(match[1]) > 48 || u.RawQuery != "" {
-			return "", failure("invalid_receiver_link", "never")
+			return Publication{}, failure("invalid_receiver_link", "never")
 		}
 		id = match[2]
 	} else if strings.HasPrefix(rel, "chat/") {
 		id = u.Query().Get("thread")
 		if !beamIDRE.MatchString(id) {
-			return "", failure("invalid_receiver_link", "never")
+			return Publication{}, failure("invalid_receiver_link", "never")
 		}
 		b, _ := json.Marshal(V1Receipt{BeamID: id, URL: u.String()})
 		if _, err := c.checkV1Receipt(b, id); err != nil {
-			return "", err
+			return Publication{}, err
 		}
 	} else {
-		return "", failure("full_machine_link_required", "never")
+		return Publication{}, failure("full_machine_link_required", "never")
 	}
 	if len(id) != 32 {
 		if profile == "" {
-			return "", failure("remote_profile_required_for_short_link", "never")
+			return Publication{}, failure("remote_profile_required_for_short_link", "never")
 		}
 		cli, err := openclawcli.New(ctx, profile, c.legacyEndpoint, "")
 		if err != nil {
-			return "", err
+			return Publication{}, err
 		}
 		id, err = resolvePrefix(ctx, cli, id)
 		if err != nil {
-			return "", err
+			return Publication{}, err
 		}
 	}
 	caps, err := c.Capabilities(ctx)
 	if err != nil {
-		return "", err
+		return Publication{}, err
 	}
 	if err := require(caps, "read"); err != nil {
-		return "", err
+		return Publication{}, err
 	}
 	pub, found, err := c.head(ctx, id)
 	if err != nil {
-		return "", err
+		return Publication{}, err
 	}
 	if !found {
-		return "", failure("unavailable", "never")
+		return Publication{}, failure("unavailable", "never")
 	}
-	return pub.APIURL, nil
+	return pub, nil
 }
 
 func resolvePrefix(ctx context.Context, gw gatewayCaller, prefix string) (string, error) {
@@ -97,6 +100,7 @@ func resolvePrefix(ctx context.Context, gw gatewayCaller, prefix string) (string
 			Hosts      []struct {
 				HostID     string    `json:"hostId"`
 				NextCursor string    `json:"nextCursor"`
+				Pending    bool      `json:"pending"`
 				Error      *struct{} `json:"error"`
 				Sessions   []struct {
 					ThreadID string `json:"threadId"`
@@ -123,7 +127,7 @@ func resolvePrefix(ctx context.Context, gw gatewayCaller, prefix string) (string
 				continue
 			}
 			hosts++
-			if host.NextCursor != "" || host.Error != nil {
+			if host.Pending || host.NextCursor != "" || host.Error != nil {
 				return "", failure("ambiguous_or_incomplete_link", "never")
 			}
 			for _, session := range host.Sessions {

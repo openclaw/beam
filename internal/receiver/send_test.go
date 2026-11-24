@@ -80,7 +80,7 @@ func TestLostSendAcknowledgementUsesStatusAndNoPlaintextJournal(t *testing.T) {
 	}
 }
 
-func TestNeverReplayExpiredUnknownSend(t *testing.T) {
+func TestNeverReplayInaccessibleSend(t *testing.T) {
 	var writes atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -100,16 +100,19 @@ func TestNeverReplayExpiredUnknownSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := Instruction{RequestID: "ad6d7344-063d-497c-8811-245654065557", Text: "go"}
-	b, _ := json.Marshal(input)
-	if _, err := st.Begin(ctx, journal.Pending{Endpoint: c.legacyEndpoint, Kind: "send", Resource: "gen", ID: input.RequestID, Body: []byte(packet.Digest(b)), Created: time.Now().Add(-2 * time.Hour)}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := c.Continue(ctx, v2Path+"/publications/gen", input); err == nil || !strings.Contains(err.Error(), "needs_reconciliation") {
-		t.Fatal("resubmitted unknown turn", err)
+	for i, age := range []time.Duration{time.Second, 2 * time.Hour} {
+		resource := fmt.Sprintf("gen-%d", i)
+		input := Instruction{RequestID: fmt.Sprintf("ad6d7344-063d-497c-8811-24565406555%d", i), Text: "go"}
+		b, _ := json.Marshal(input)
+		if _, err := st.Begin(ctx, journal.Pending{Endpoint: c.legacyEndpoint, Kind: "send", Resource: resource, ID: input.RequestID, Body: []byte(packet.Digest(b)), Created: time.Now().Add(-age)}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Continue(ctx, v2Path+"/publications/"+resource, input); err == nil || !strings.Contains(err.Error(), "needs_reconciliation") {
+			t.Fatal("resubmitted unknown turn", err)
+		}
 	}
 	if writes.Load() != 0 {
-		t.Fatal("write after send-receipt expiry")
+		t.Fatal("resent after opaque status lookup")
 	}
 }
 
