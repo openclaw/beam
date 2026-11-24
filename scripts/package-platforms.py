@@ -49,7 +49,7 @@ def add_member(archive, name, data, mode):
     archive.addfile(info, io.BytesIO(data))
 
 
-def wrap(path, version, platform, arch, executable, binary, license_text):
+def wrap(path, version, platform, arch, executable, binary, license_text, notices):
     metadata = {
         "name": f"@openclaw/beam-{platform}-{arch}",
         "version": version,
@@ -58,13 +58,14 @@ def wrap(path, version, platform, arch, executable, binary, license_text):
         "os": [platform],
         "cpu": [arch],
         "bin": {"beam": "bin/" + executable},
-        "files": ["bin", "LICENSE"],
+        "files": ["bin", "LICENSE", "THIRD-PARTY-NOTICES.txt"],
     }
     with path.open("wb") as out, gzip.GzipFile(filename="", fileobj=out, mode="wb", mtime=0) as compressed:
         with tarfile.open(mode="w", fileobj=compressed, format=tarfile.USTAR_FORMAT) as archive:
             add_member(archive, "package.json", (json.dumps(metadata, indent=2) + "\n").encode(), 0o644)
             add_member(archive, "bin/" + executable, binary, 0o755)
             add_member(archive, "LICENSE", license_text, 0o644)
+            add_member(archive, "THIRD-PARTY-NOTICES.txt", notices, 0o644)
 
 
 def package(dist, version, destination):
@@ -78,9 +79,11 @@ def package(dist, version, destination):
     files = []
     packages = {}
     cleaners = {}
-    license_text = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
+    source = Path(__file__).resolve().parents[1]
+    license_text = (source / "LICENSE").read_bytes()
+    notices = (source / "THIRD-PARTY-NOTICES.txt").read_bytes()
     cleaner_notice = destination / "CLEANER-NOTICE.txt"
-    shutil.copyfile(Path(__file__).resolve().parents[1] / cleaner_notice.name, cleaner_notice)
+    shutil.copyfile(source / cleaner_notice.name, cleaner_notice)
     files.append(cleaner_notice)
     for go_os, platform in PLATFORMS.items():
         for go_arch, arch in ARCHITECTURES.items():
@@ -89,7 +92,7 @@ def package(dist, version, destination):
             native = copy_verified(dist, destination, name, checksums)
             wrapper = destination / f"beam-npm-{platform}-{arch}-{version}.tgz"
             binary = extract_binary(native, executable)
-            wrap(wrapper, version, platform, arch, executable, binary, license_text)
+            wrap(wrapper, version, platform, arch, executable, binary, license_text, notices)
             files.extend([native, wrapper])
             with wrapper.open("rb") as data:
                 integrity = hashlib.file_digest(data, "sha512").digest()

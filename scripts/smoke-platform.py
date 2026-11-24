@@ -32,10 +32,14 @@ def smoke(assets, version, go_os, go_arch):
     if go_os == "windows":
         with zipfile.ZipFile(native) as archive:
             binary = archive.read(executable)
+            notices = archive.read("THIRD-PARTY-NOTICES.txt")
     else:
         with tarfile.open(native, "r:gz") as archive:
             binary = archive.extractfile(executable).read()
+            notices = archive.extractfile("THIRD-PARTY-NOTICES.txt").read()
     with tarfile.open(wrapper, "r:gz") as archive:
+        if b"modernc.org/sqlite" not in notices or archive.extractfile("package/THIRD-PARTY-NOTICES.txt").read() != notices:
+            raise ValueError(f"missing full CLI redistribution notices in {wrapper.name}")
         manifest = json.load(archive.extractfile("package/package.json"))
         expected = {"name": f"@openclaw/beam-{platform}-{arch}", "version": version,
                     "os": [platform], "cpu": [arch], "bin": {"beam": "bin/" + executable}}

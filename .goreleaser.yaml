@@ -1,5 +1,8 @@
 version: 2
 project_name: beam
+before:
+  hooks:
+    - python3 scripts/full-notices.py
 builds:
   - &native
     id: beam
@@ -34,6 +37,7 @@ archives:
     files:
       - LICENSE
       - README.md
+      - THIRD-PARTY-NOTICES.txt
       - integrations/skill/SKILL.md
   - id: cleaners
     ids: [beam-clean]
