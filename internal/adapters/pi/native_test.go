@@ -17,6 +17,7 @@ import (
 	"time"
 
 	native "github.com/openclaw/beam/integrations/pi"
+	"github.com/openclaw/beam/internal/adapter"
 )
 
 // An installed Pi serves RPC and sends one explicit instruction to a loopback model.
@@ -78,8 +79,11 @@ func TestNativePiReference(t *testing.T) {
 	type event struct {
 		Type, Command string
 		Success       bool
-		Data          struct{ Messages []json.RawMessage }
-		Error         string
+		Data          struct {
+			Messages  []json.RawMessage
+			SessionID string
+		}
+		Error string
 	}
 	until := func(typ, command string) event {
 		t.Helper()
@@ -130,5 +134,18 @@ func TestNativePiReference(t *testing.T) {
 	}
 	if notices != 1 {
 		t.Fatalf("got %d Beam notices", notices)
+	}
+	send(map[string]string{"type": "get_state"})
+	state := until("response", "get_state")
+	if state.Data.SessionID == "" {
+		t.Fatal("Pi did not return a current native session ID")
+	}
+	got, err := (Adapter{Project: project, AgentDir: home}).Call(ctx, adapter.Request{Op: "read", Selection: state.Data.SessionID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := got.(adapter.ReadResult).Items
+	if len(items) != 2 || items[0].Text != "EXPLICIT_FIXTURE_QUESTION" || items[1].Text != "fixture answer" {
+		t.Fatal("selected Pi source did not contain exactly the two visible messages")
 	}
 }

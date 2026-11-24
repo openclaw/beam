@@ -95,7 +95,7 @@ func TestNativeClaudeReference(t *testing.T) {
 	cmd = exec.CommandContext(ctx, "claude", "-p", "EXPLICIT_FIXTURE_QUESTION", "--plugin-dir", bridge, "--model", "claude-sonnet-4-6", "--tools", "", "--strict-mcp-config", "--mcp-config", `{"mcpServers":{}}`, "--max-turns", "1", "--output-format", "json")
 	cmd.Dir = project
 	cmd.Env = env
-	out, err = cmd.CombinedOutput()
+	out, err = cmd.Output()
 	if err != nil {
 		t.Fatalf("native Claude: %v: %.500s", err, out)
 	}
@@ -105,5 +105,19 @@ func TestNativeClaudeReference(t *testing.T) {
 	body := <-calls
 	if !bytes.Contains(body, []byte("EXPLICIT_FIXTURE_QUESTION")) || !bytes.Contains(body, []byte("reference.beam.json")) || bytes.Contains(body, []byte("SYNTHETIC_RAW_REFERENCE")) {
 		t.Fatal("native Claude model input did not preserve the reference boundary")
+	}
+	var reply struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(out, &reply); err != nil || reply.SessionID == "" {
+		t.Fatal("Claude returned no resumable session ID", err)
+	}
+	got, err := (Adapter{ConfigDir: filepath.Join(home, ".claude"), Project: project}).Call(ctx, adapter.Request{Op: "read", Selection: reply.SessionID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := got.(adapter.ReadResult).Items
+	if len(items) != 2 || items[0].Text != "EXPLICIT_FIXTURE_QUESTION" || items[1].Text != "fixture response" {
+		t.Fatal("selected Claude source did not contain exactly the two visible messages")
 	}
 }
