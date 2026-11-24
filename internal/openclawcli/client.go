@@ -162,7 +162,7 @@ func profileEnvironment(environ []string, dir, config string) []string {
 func (c *Client) Call(ctx context.Context, method string, params any) (json.RawMessage, error) {
 	switch method {
 	case "beam.owned.list", "beam.owned.read", "beam.owned.resolve", "beam.owned.continue",
-		"sessions.catalog.list", "sessions.catalog.read", "sessions.catalog.resolve", "sessions.catalog.continue",
+		"sessions.catalog.route", "sessions.catalog.list", "sessions.catalog.read", "sessions.catalog.resolve", "sessions.catalog.continue",
 		"chat.history", "chat.send":
 	default:
 		return nil, fmt.Errorf("unsupported OpenClaw method %q", method)
