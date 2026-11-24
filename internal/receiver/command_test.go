@@ -129,7 +129,7 @@ func TestCloudflaredShimOnlyWhenRequested(t *testing.T) {
 		t.Skip("POSIX synthetic cloudflared fixture")
 	}
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "cloudflared"), []byte("#!/bin/sh\ncase \"$1 $2 $3\" in\n 'access token --app=https://gateway.example') echo synthetic-token;;\n *) exit 2;;\nesac\n"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "cloudflared"), []byte("#!/bin/sh\ncase \"$1 $2 $3\" in\n 'access token --app=https://gateway.example/team/api/v2/beam/capabilities'|'access token --app=https://gateway.example/team/api/v1/beam/sessions') echo synthetic-token;;\n *) exit 2;;\nesac\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
@@ -140,6 +140,13 @@ func TestCloudflaredShimOnlyWhenRequested(t *testing.T) {
 	h, err := c.authHeaders(context.Background())
 	if err != nil || h.Get("CF-Access-Token") != "synthetic-token" || h.Get("Authorization") != "Bearer synthetic-origin" {
 		t.Fatal("failed scoped edge+origin auth")
+	}
+	legacy, err := New(Config{Endpoint: "https://gateway.example/team" + v1Path, CloudflareLogin: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h, err := legacy.authHeaders(context.Background()); err != nil || h.Get("CF-Access-Token") != "synthetic-token" {
+		t.Fatal("failed legacy mounted Access app selection", err)
 	}
 	other, err := New(Config{Endpoint: "https://gateway.example/team"})
 	if err != nil {

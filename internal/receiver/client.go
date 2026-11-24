@@ -136,9 +136,14 @@ func (c *Client) authHeaders(ctx context.Context) (http.Header, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.login && c.headers.Get("Cf-Access-Token") == "" && c.headers.Get("Cf-Access-Client-Id") == "" {
-		origin := c.base.Scheme + "://" + c.base.Host
+		// Access may assign a distinct audience to the Beam API under a
+		// shared host. Discover it at the selected mounted endpoint.
+		app := endpointURL(c.base, v2Path+"/capabilities")
+		if c.legacy {
+			app = c.legacyEndpoint
+		}
 		token := func() (string, error) {
-			out, err := exec.CommandContext(ctx, "cloudflared", "access", "token", "--app="+origin).Output()
+			out, err := exec.CommandContext(ctx, "cloudflared", "access", "token", "--app="+app).Output()
 			if err != nil || len(out) > 32*1024 {
 				return "", failure("cloudflare_token_unavailable", "never")
 			}
@@ -150,7 +155,7 @@ func (c *Client) authHeaders(ctx context.Context) (http.Header, error) {
 		}
 		t, err := token()
 		if err != nil {
-			cmd := exec.CommandContext(ctx, "cloudflared", "access", "login", "--quiet", origin)
+			cmd := exec.CommandContext(ctx, "cloudflared", "access", "login", "--quiet", app)
 			cmd.Stdin = os.Stdin
 			cmd.Stderr = os.Stderr
 			if err := cmd.Run(); err != nil {
