@@ -42,18 +42,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return nil, err
-	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return nil, err
-	}
-	if err := file.Chmod(0600); err != nil {
-		file.Close()
-		return nil, err
-	}
-	if err := file.Close(); err != nil {
+	if err := prepareJournal(path); err != nil {
 		return nil, err
 	}
 	name := filepath.ToSlash(path)

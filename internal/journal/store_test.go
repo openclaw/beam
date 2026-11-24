@@ -3,7 +3,7 @@ package journal
 import (
 	"context"
 	"errors"
-	"os"
+
 	"path/filepath"
 	"testing"
 	"time"
@@ -49,10 +49,17 @@ func TestRestartAndLegacyFence(t *testing.T) {
 	if err != nil || tr.Packet != nil || len(tr.Receipt) == 0 {
 		t.Fatalf("incomplete receipt: %+v %v", tr, err)
 	}
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm()&0077 != 0 {
-		t.Fatal("journal must be private")
+	assertPrivateFile(t, path)
+	// Inspect the actual SQLite rollback journal while a write is uncommitted.
+	tx, err := s.db.Begin()
+	if err != nil {
+		t.Fatal(err)
 	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("UPDATE beam_pending SET condition='pending'"); err != nil {
+		t.Fatal(err)
+	}
+	assertPrivateFile(t, path+"-journal")
 }
 func TestExistingLegacyRowCannotBeClaimed(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "handoffs.sqlite"))
