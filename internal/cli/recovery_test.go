@@ -59,4 +59,10 @@ func TestLocalRetryAndSendIdentities(t *testing.T) {
 	if code != 5 || fixture.sends != 1 {
 		t.Fatal(code, fixture.sends)
 	}
+	fixture.ref.NativeSession = "replacement"
+	args[len(args)-2] = "new instruction"
+	code, _, _ = invoke(t, a, raw, args...)
+	if code != 5 || fixture.opens != 1 || fixture.sends != 1 {
+		t.Fatal("stale native binding used", code)
+	}
 }

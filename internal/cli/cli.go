@@ -49,7 +49,7 @@ func (a App) Run(ctx context.Context, args []string, in io.Reader, out, stderr i
 		return 0
 	}
 	cmd, argv := args[0], args[1:]
-	jsonMode := slices.Contains(argv, "--json")
+	jsonMode := cmd == "adapter" || slices.Contains(argv, "--json")
 	fail := func(err error) int {
 		if jsonMode {
 			_ = json.NewEncoder(out).Encode(adapter.Failure(err))

@@ -47,7 +47,15 @@ func recordCall[T any](ctx context.Context, target string, a adapter.Adapter, r 
 	var value T
 	if len(rec.Receipt) > 0 {
 		err = json.Unmarshal(rec.Receipt, &value)
-		return value, err
+		if err != nil {
+			return zero, err
+		}
+		if opened, ok := any(value).(adapter.OpenResult); ok && opened.State == "ready" {
+			if err := verifyBinding(ctx, a, opened, id); err != nil {
+				return zero, err
+			}
+		}
+		return value, nil
 	}
 	if !first {
 		if recovery != "lookupByOperationId" || r.Op == "send" {
@@ -84,6 +92,14 @@ func recordCall[T any](ctx context.Context, target string, a adapter.Adapter, r 
 	return value, nil
 }
 
+func verifyBinding(ctx context.Context, dst adapter.Adapter, saved adapter.OpenResult, id string) error {
+	current, err := call[adapter.OpenResult](ctx, dst, adapter.Request{Op: "resolve", Handle: saved.Handle})
+	if err != nil || current.State != "ready" || current.NativeSession != saved.NativeSession {
+		return uncertain(id)
+	}
+	return nil
+}
+
 func uncertain(id string) error {
 	return adapter.Fail("needs_reconciliation", "after_reconcile", fmt.Sprintf("operation %s may have completed; use its existing reference to reconcile", id))
 }
@@ -116,9 +132,8 @@ func lookupLocal(ctx context.Context, target string, dst adapter.Adapter, id, db
 			var r adapter.OpenResult
 			err = json.Unmarshal(row.Receipt, &r)
 			if err == nil && r.Handle != "" && r.State == "ready" {
-				probe, err := call[adapter.OpenResult](ctx, dst, adapter.Request{Op: "resolve", Handle: r.Handle})
-				if err != nil || probe.State != "ready" || probe.NativeSession != r.NativeSession {
-					return nil, uncertain(id)
+				if err := verifyBinding(ctx, dst, r, id); err != nil {
+					return nil, err
 				}
 			}
 			return r, err
