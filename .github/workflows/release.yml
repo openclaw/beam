@@ -135,6 +135,6 @@ jobs:
         run: |
           cd release-assets
           sha256sum --check SHA256SUMS
-          flags=(--verify-tag --generate-notes --title "Beam $GITHUB_REF_NAME")
+          flags=(--verify-tag --notes-from-tag --title "Beam $GITHUB_REF_NAME")
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" "${flags[@]}" ./*
