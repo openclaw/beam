@@ -52,10 +52,10 @@ beam open task.beam.json --in opencode</code></pre>
         <thead><tr><th scope="col">Harness</th><th scope="col">Verified behavior</th></tr></thead>
         <tbody>
           <tr><th scope="row">Codex 0.172.0 and OpenCode 1.19.6</th><td>Export a selected session, copy it in either direction and reopen it. Sending a new instruction is a separate operation.</td></tr>
-          <tr><th scope="row">Claude Code 2.1.296</th><td>Read a selected project history and stage a reference. The native CLI validated the generated session plugin.</td></tr>
-          <tr><th scope="row">Pi 0.83.0</th><td>Stage a reference and load the extension. The first explicit turn received the reference notice.</td></tr>
+          <tr><th scope="row">Claude Code 2.1.296 and Pi 0.83.0</th><td>Stage a reference without starting a model turn. After an explicit prompt, Beam read the question and answer from the new native session.</td></tr>
           <tr><th scope="row">Gemini CLI 0.45.0</th><td>Load a staged session file, then complete login in Gemini. The CLI assigned a new session ID before login.</td></tr>
           <tr><th scope="row">acpx 0.22.0</th><td>Read a selected ACP session and stage a reference. Continue manually in the target agent. Bound sends require an acpx version that can verify the selected record.</td></tr>
+          <tr><th scope="row">OpenClaw 2026.6.11</th><td>Export the selected session through an authenticated Gateway. The wrong-token profile was denied. History without completeness evidence is marked truncated.</td></tr>
           <tr><th scope="row">Local file</th><td>Read a selected UTF-8 file or render a Markdown reference for manual import.</td></tr>
         </tbody>
       </table>
