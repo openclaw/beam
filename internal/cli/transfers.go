@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -194,7 +195,18 @@ func open(ctx context.Context, dst adapter.Adapter, p packet.Packet, o options) 
 		return nil, adapter.Unsupported("send")
 	}
 	operationID := pick(o.values["operation-id"])
-	res, err := call[adapter.OpenResult](ctx, dst, adapter.Request{Op: op, Packet: p, OperationID: operationID})
+	req := adapter.Request{Op: op, Packet: p, OperationID: operationID}
+	dstID := o.values["in"]
+	if dstID == "" {
+		dstID = o.values["to"]
+	}
+	target := bindingKey(dstID, dst)
+	var res adapter.OpenResult
+	if c.Recovery == "lookupByOperationId" || o.values["operation-id"] != "" || message != "" {
+		res, err = recordCall[adapter.OpenResult](ctx, target, dst, req, c.Recovery, o.values["state"])
+	} else {
+		res, err = call[adapter.OpenResult](ctx, dst, req)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +235,14 @@ func open(ctx context.Context, dst adapter.Adapter, p packet.Packet, o options) 
 	if message == "" {
 		return res, nil
 	}
-	sent, err := call[adapter.SendResult](ctx, dst, adapter.Request{Op: "send", RequestID: pick(o.values["request-id"]), Handle: res.Handle, Instruction: message})
+	requestID := o.values["request-id"]
+	if requestID == "" {
+		sum := sha256.Sum256([]byte("beam-first-send:" + operationID))
+		sum[6] = sum[6]&15 | 80
+		sum[8] = sum[8]&63 | 128
+		requestID = fmt.Sprintf("%x-%x-%x-%x-%x", sum[:4], sum[4:6], sum[6:8], sum[8:10], sum[10:16])
+	}
+	sent, err := recordCall[adapter.SendResult](ctx, target, dst, adapter.Request{Op: "send", RequestID: requestID, Handle: res.Handle, Instruction: message}, c.Recovery, o.values["state"])
 	if err != nil {
 		return nil, err
 	}

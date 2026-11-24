@@ -19,10 +19,10 @@ var optionsFor = map[string]string{
 	"capabilities": "json", "doctor": "json adapter", "adapter": "in adapter",
 	"list": "from cursor limit json adapter", "pack": "from session branch out omit redact json adapter",
 	"clean": "protocol omit redact", "inspect": "json", "render": "out",
-	"open":    "in message mode operation-id request-id expect-digest json adapter out",
-	"push":    "from session branch to mode message operation-id request-id expect-digest dry-run omit redact out json adapter",
-	"resolve": "in handle json adapter", "send": "in handle request-id message json adapter",
-	"lookup": "in operation-id json adapter",
+	"open":    "in message mode operation-id request-id expect-digest json adapter out state",
+	"push":    "from session branch to mode message operation-id request-id expect-digest dry-run omit redact out json adapter state",
+	"resolve": "in handle json adapter", "send": "in handle request-id message json adapter state",
+	"lookup": "in operation-id json adapter state",
 }
 
 func parseOptions(cmd string, args []string) (options, error) {

@@ -300,7 +300,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 			if err := o.require("operation-id"); err != nil {
 				return nil, err
 			}
-			return call[adapter.OpenResult](ctx, dst, adapter.Request{Op: "lookupOperation", OperationID: o.values["operation-id"]})
+			return lookupLocal(ctx, bindingKey(o.values["in"], dst), dst, o.values["operation-id"], o.values["state"])
 		}
 		if err := o.require("handle"); err != nil {
 			return nil, err
@@ -311,7 +311,14 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		if err := o.require("message"); err != nil {
 			return nil, err
 		}
-		return call[adapter.SendResult](ctx, dst, adapter.Request{Op: "send", Handle: o.values["handle"], Instruction: o.values["message"], RequestID: pick(o.values["request-id"])})
+		c, err := caps(ctx, dst)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Contains(c.Destination, "send") {
+			return nil, adapter.Unsupported("send")
+		}
+		return recordCall[adapter.SendResult](ctx, bindingKey(o.values["in"], dst), dst, adapter.Request{Op: "send", Handle: o.values["handle"], Instruction: o.values["message"], RequestID: pick(o.values["request-id"])}, c.Recovery, o.values["state"])
 	}
 	return nil, adapter.Unsupported(cmd)
 }
