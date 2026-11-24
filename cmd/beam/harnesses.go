@@ -8,6 +8,7 @@ import (
 	"github.com/openclaw/beam/internal/adapters/claude"
 	"github.com/openclaw/beam/internal/adapters/codex"
 	"github.com/openclaw/beam/internal/adapters/gemini"
+	"github.com/openclaw/beam/internal/adapters/openclaw"
 	"github.com/openclaw/beam/internal/adapters/opencode"
 	"github.com/openclaw/beam/internal/adapters/pi"
 	"github.com/openclaw/beam/internal/adapters/staged"
@@ -18,6 +19,9 @@ import (
 
 func application() cli.App {
 	return cli.App{
+		OpenClaw: func(profileDir, endpoint string) adapter.Adapter {
+			return openclaw.Adapter{ProfileDir: profileDir, Endpoint: endpoint}
+		},
 		Version: version,
 		Adapters: cli.Registry{
 			"acpx": acp.Adapter{}, "claude": claude.Adapter{}, "codex": codex.Adapter{},
