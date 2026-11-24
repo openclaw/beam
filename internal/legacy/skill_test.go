@@ -88,10 +88,17 @@ func TestUnattendedHookAndEnvelopeValidation(t *testing.T) {
 	if out, diag, code = call(t, req); code != 1 || out != "" || !strings.Contains(diag, "ownership transfer") {
 		t.Fatalf("missing receipt: %q %q %d", out, diag, code)
 	}
-	req.Operation = "handoff"
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	req.Endpoint = server.URL + "/api/v1/beam/sessions"
+	req.Operation = "share"
 	req.Packet = strings.Replace(testPacket, `"source":"claude"`, `"source":"claude","handoffId":"11111111111111111111111111111111"`, 1)
-	if _, _, code = call(t, req); code != 1 {
-		t.Fatal("accepted caller-supplied handoff control")
+	if out, diag, code = call(t, req); code != 1 || out != "" || !strings.Contains(diag, "file_cannot_release") || requests != 0 {
+		t.Fatalf("share with an embedded release: %q %q %d; requests %d", out, diag, code, requests)
 	}
 	var stdout, stderr bytes.Buffer
 	if code := Run(context.Background(), []string{"--protocol"}, strings.NewReader(""), &stdout, &stderr); code != 0 || stdout.String() != "1\n" {
