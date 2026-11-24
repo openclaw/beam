@@ -50,6 +50,36 @@ jobs:
           name: native-packages
           path: release-assets/
           if-no-files-found: error
+  harnesses:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: native-packages
+          path: release-assets
+      - name: Exercise installed harnesses with a loopback provider
+        env:
+          BEAM_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          tar -xzf "release-assets/beam_${BEAM_VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" beam
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/harnesses" @openai/codex@0.172.0 opencode-ai@1.19.6 acpx@0.22.0
+          harness_bin="$RUNNER_TEMP/harnesses/node_modules/.bin"
+          export BEAM_E2E_BINARY="$RUNNER_TEMP/beam"
+          export BEAM_E2E_CODEX="$harness_bin/codex" BEAM_E2E_OPENCODE="$harness_bin/opencode"
+          export BEAM_TEST_ACPX="$harness_bin/acpx"
+          go test -v -count=1 -tags=beam_native ./conformance/e2e -run '^TestNativeRoundTrip$'
+          go test -v -count=1 ./internal/adapters/acp
   smoke:
     needs: build
     strategy:
@@ -84,7 +114,7 @@ jobs:
         run: python scripts/smoke-platform.py release-assets "$BEAM_VERSION" "$GOOS" "$GOARCH"
   publish:
     if: github.event_name == 'push'
-    needs: [build, smoke]
+    needs: [build, smoke, harnesses]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
