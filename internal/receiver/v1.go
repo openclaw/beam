@@ -1,9 +1,9 @@
 package receiver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"regexp"
 	"strings"
 
@@ -233,16 +233,17 @@ func (c *Client) HandoffV1(ctx context.Context, id string, data []byte, snapshot
 			return V1Receipt{}, err
 		}
 	}
-	var frozen map[string]json.RawMessage
-	if err := json.Unmarshal(row.Payload, &frozen); err != nil {
-		return V1Receipt{}, errors.New("invalid frozen legacy payload")
+	if !beamIDRE.MatchString(generation) {
+		return V1Receipt{}, failure("needs_reconciliation", "after_reconcile")
 	}
-	value, _ := json.Marshal(generation)
-	frozen["handoffId"] = value
-	body, err := json.Marshal(frozen)
-	if err != nil {
-		return V1Receipt{}, err
-	}
+	// The released JS sender appends the control member last. Preserve the frozen
+	// snapshot's spelling and field order across a native-client restart.
+	end := bytes.LastIndexByte(row.Payload, '}')
+	body := append([]byte(nil), row.Payload[:end]...)
+	body = append(body, `,"handoffId":"`...)
+	body = append(body, generation...)
+	body = append(body, '"')
+	body = append(body, row.Payload[end:]...)
 	r, err := c.postV1(ctx, body, id)
 	if err != nil {
 		return V1Receipt{}, err

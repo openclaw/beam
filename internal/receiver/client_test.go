@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -176,5 +177,34 @@ func TestLegacySnapshotOnlyAndTransferredHooks(t *testing.T) {
 	}
 	if _, err = c.ShareV1(context.Background(), raw); err != nil || calls.Load() != 2 {
 		t.Fatal("retired hook issued another upload", err)
+	}
+}
+
+func TestLegacyReleasePreservesFrozenBytes(t *testing.T) {
+	ctx := context.Background()
+	p, _ := packet.Parse(fixture(t))
+	encoded, err := packet.V1Projection(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := []byte(strings.Replace(string(encoded), "reviewed context", "<reviewed & frozen>", 1))
+	generation := strings.Repeat("f", 32)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if string(body) == string(raw) {
+			fmt.Fprintf(w, `{"publicationId":%q}`, generation)
+			return
+		}
+		end := strings.LastIndexByte(string(raw), '}')
+		expected := string(raw[:end]) + `,"handoffId":"` + generation + `"` + string(raw[end:])
+		if string(body) != expected {
+			t.Error("release changed the stored snapshot bytes")
+		}
+		fmt.Fprintf(w, `{"beamId":%q,"url":"/beam/0123456789ab","handoff":{"owner":"gateway","access":"owned","id":%q}}`, fixtureID, generation)
+	}))
+	defer srv.Close()
+	c := clientFor(t, srv.URL+v1Path, filepath.Join(t.TempDir(), "state.db"))
+	if _, err := c.HandoffV1(ctx, fixtureID, raw, false); err != nil {
+		t.Fatal(err)
 	}
 }
