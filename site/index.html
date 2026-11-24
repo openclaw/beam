@@ -39,18 +39,31 @@
       <div><h2 id="usage-title">Use the CLI</h2><p>Install from source with Go, then check the adapters available on your machine.</p></div>
       <pre><code>go install github.com/openclaw/beam/cmd/beam@main
 beam doctor --json</code></pre>
-      <div><h3>Move a session</h3><p>Select a Claude session by its exact ID and inspect the file before choosing a destination.</p></div>
-      <pre><code>beam pack --from claude --session &lt;id&gt; --out task.beam.json
+      <div><h3>Move a session</h3><p>Choose a Codex session in the source project. Review its cleaned bytes, then open them in OpenCode.</p></div>
+      <pre><code>beam list --from codex
+beam pack --from codex --session "$SESSION_ID" --out task.beam.json
 beam inspect task.beam.json
-beam open task.beam.json --in codex</code></pre>
+beam open task.beam.json --in opencode</code></pre>
     </section>
     <section id="support" aria-labelledby="support-title">
       <h2 id="support-title">Harness support</h2>
-      <p>Check <code>beam doctor --json</code> for the adapters and operations available locally. Release notes identify qualified versions and whether an adapter can export, stage a reference, or reopen a destination.</p>
+      <p>Check <code>beam doctor --json</code> for the operations available on your machine. These versions have been exercised with synthetic conversations.</p>
+      <table>
+        <thead><tr><th scope="col">Harness</th><th scope="col">Verified behavior</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Codex 0.172.0 and OpenCode 1.19.6</th><td>Export a selected session, copy it in either direction and reopen it. Sending a new instruction is a separate operation.</td></tr>
+          <tr><th scope="row">Claude Code 2.1.296</th><td>Read a selected project history and stage a reference. The native CLI validated the generated session plugin.</td></tr>
+          <tr><th scope="row">Pi 0.83.0</th><td>Stage a reference and load the extension. The first explicit turn received the reference notice.</td></tr>
+          <tr><th scope="row">Gemini CLI 0.45.0</th><td>Load a staged session file, then complete login in Gemini. The CLI assigned a new session ID before login.</td></tr>
+          <tr><th scope="row">acpx 0.22.0</th><td>Stage reviewed context and send an explicit instruction to a configured ACP agent. Tested with a local protocol peer.</td></tr>
+          <tr><th scope="row">Local file</th><td>Read a selected UTF-8 file or render a Markdown reference for manual import.</td></tr>
+        </tbody>
+      </table>
       <div class="links">
         <a href="https://github.com/openclaw/beam/releases">Releases ↗</a>
         <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md">Protocol design ↗</a>
         <a href="https://github.com/openclaw/beam/blob/main/schema/packet-v2.schema.json">Packet schema ↗</a>
+        <a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill ↗</a>
       </div>
     </section>
   </main>
