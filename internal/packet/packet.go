@@ -89,8 +89,13 @@ func wireSpace(r rune) bool {
 	return r == '\ufeff' || (r != '\u0085' && unicode.IsSpace(r))
 }
 
+// IsBlank follows the packet schema's ECMAScript whitespace definition.
+func IsBlank(s string) bool {
+	return strings.TrimFunc(s, wireSpace) == ""
+}
+
 func validText(s string, limit int) bool {
-	return utf8.ValidString(s) && strings.TrimFunc(s, wireSpace) != "" && Clip(s, limit) == s
+	return utf8.ValidString(s) && !IsBlank(s) && Clip(s, limit) == s
 }
 
 func (p Packet) Validate() error {

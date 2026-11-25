@@ -130,12 +130,12 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 			continue
 		}
 		text := filter(item.Text)
-		if text == "" {
+		clipped := packet.Clip(text, packet.MaxItemChars)
+		r.Truncated = r.Truncated || clipped != text
+		if packet.IsBlank(clipped) {
 			r.Omissions++
 			continue
 		}
-		clipped := packet.Clip(text, packet.MaxItemChars)
-		r.Truncated = r.Truncated || clipped != text
 		p.Items = append(p.Items, packet.Item{Type: item.Type, Text: clipped})
 		speakers = append(speakers, item.SpeakerID)
 	}

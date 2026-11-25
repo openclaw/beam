@@ -36,6 +36,20 @@ func TestCompactBudgetKeepsNewestItems(t *testing.T) {
 	}
 }
 
+func TestFitOmitsItemsThatAreBlankOnTheWire(t *testing.T) {
+	items := []Item{
+		{Type: "other", Text: "\ufeff"},
+		{Type: "other", Text: strings.Repeat("\ufeff", packet.MaxItemChars) + "x"},
+	}
+	for range 10 {
+		items = append(items, Item{Type: "other", Text: strings.Repeat("&", packet.MaxItemChars)})
+	}
+	p, report, err := Build(candidate(items...), Options{})
+	if err != nil || report.Omissions != 2 || !report.Truncated || len(p.Items) != 9 {
+		t.Fatalf("got %d items, report %+v, err %v", len(p.Items), report, err)
+	}
+}
+
 func TestCleanerGolden(t *testing.T) {
 	input, err := os.ReadFile("../../conformance/packet/read.json")
 	if err != nil {
