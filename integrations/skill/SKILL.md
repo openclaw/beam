@@ -7,6 +7,10 @@ description: Copy reviewed conversation history between coding harnesses, share 
 
 Use the installed `beam` executable. Run `beam doctor --json` to see which harnesses can read, import, stage, or send on this machine.
 
+## Include images and files
+
+When `beam capabilities --json` reports bundle version 1, run `beam bundle create reviewed.beam.json --attach FILE --out handoff.beam.zip` with the files the user selected. Repeat `--attach` for each file. Run `beam bundle inspect handoff.beam.zip --json` to verify its contents. Attachments preserve their original bytes and metadata. To show them to the user, run `beam bundle preview handoff.beam.zip --out handoff.html`. Gateway snapshot links carry the conversation text; deliver a requested rich handoff as the ZIP.
+
 ## Copy a conversation
 
 Use the source session ID the user selected. If needed, run `beam list --from "$source" --json` and identify the conversation before reading it.

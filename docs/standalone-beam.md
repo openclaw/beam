@@ -87,6 +87,16 @@ Bundling the six v0.1.0 cleaners added **6,808,001 bytes** to the compressed Ope
 
 The public page needs the install command, two-harness walkthrough, synthetic cleaning example, per-version support matrix, schema, and releases. Host it statically. A running Beam server, browser-side cleaner, and sign-in are unnecessary for this page.
 
+## Portable asset bundles
+
+A `.beam.zip` travels as an ordinary file. Use a single-disk ZIP32 archive without an archive comment. Store all members uncompressed. The central directory limit is 16 KiB. At the archive root, `packet.beam.json` holds the exact reviewed v1 or v2 packet and `manifest.json` follows the [v1 bundle schema](../schema/bundle-v1.schema.json). The packet retains its original SHA-256. The bundle digest covers the complete ZIP, including the manifest and all attachments.
+
+Each attachment has a display filename, media type, byte count, SHA-256 and a generated path such as `assets/01.png`. Number paths in manifest order, starting at 01. Use only the listed regular files. A bundle contains 1–16 attachments, up to 16 MiB each and 32 MiB combined. The manifest limit is 16 KiB. The full archive limit is 32 MiB plus 128 KiB. The existing packet limit is 56 KiB.
+
+Beam detects PNG, JPEG, GIF, WebP, PDF, UTF-8 text, ID3-tagged MP3, WAV, MP4 and WebM. It copies the selected files byte for byte. This includes image metadata and document contents. The packet cleaner applies to the conversation. Inspect the inventory and review the files before sending them.
+
+`beam bundle inspect FILE --json` checks the member names, hashes, lengths, types and packet schema before returning the manifest and bundle digest. To compare against a digest supplied by the sender, add `--expect-digest sha256:…`. `beam bundle preview FILE --out preview.html` creates an offline HTML page with inline images, playback controls and downloadable documents. Any ZIP tool can extract the packet and original attachments. To share the conversation with a text-only Gateway, extract `packet.beam.json` and follow the regular packet-sharing workflow.
+
 ## Portable data and cleaning
 
 The v2 packet uses a closed Draft 2020-12 JSON Schema and a transport-level byte limit. The v1 endpoint retains its own packet contract. [V2 schema](../schema/packet-v2.schema.json) · [V1 schema](../schema/packet-v1.schema.json) · [Cleaner input](../schema/packet-candidate-v1.schema.json)

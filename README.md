@@ -6,41 +6,23 @@ Bring a coding conversation into **OpenClaw**. Beam reads the session you select
 
 ## Where your session can come from
 
-**Direct or through acpx**
-
-<img src="site/marks/openclaw.png" alt="" width="20" height="20"> OpenClaw ·
-<img src="site/marks/claude.png" alt="" width="20" height="20"> Claude Code ·
-<img src="site/marks/codex.png" alt="" width="20" height="20"> Codex ·
-<img src="site/marks/opencode.png" alt="" width="20" height="20"> OpenCode ·
-<img src="site/marks/gemini.png" alt="" width="20" height="20"> Gemini CLI ·
-<img src="site/marks/pi.png" alt="" width="20" height="20"> Pi
-
-**Through acpx**
-
-<img src="site/marks/cursor.png" alt="" width="20" height="20"> Cursor ·
-<img src="site/marks/copilot.png" alt="" width="20" height="20"> GitHub Copilot ·
-<img src="site/marks/goose.png" alt="" width="20" height="20"> Goose ·
-<img src="site/marks/kiro.png" alt="" width="20" height="20"> Kiro ·
-<img src="site/marks/kimi.png" alt="" width="20" height="20"> Kimi ·
-<img src="site/marks/qwen.png" alt="" width="20" height="20"> Qwen Code ·
-<img src="site/marks/antigravity.png" alt="" width="20" height="20"> Antigravity ·
-<img src="site/marks/ante.png" alt="" width="20" height="20"> Ante ·
-<img src="site/marks/deepseek-harness.png" alt="" width="20" height="20"> DeepSeek Harness ·
-<img src="site/marks/devin.png" alt="" width="20" height="20"> Devin ·
-**Factory Droid** ·
-<img src="site/marks/fast-agent.png" alt="" width="20" height="20"> fast-agent ·
-**fx** ·
-<img src="site/marks/grok-build.png" alt="" width="20" height="20"> Grok Build ·
-**iFlow** ·
-<img src="site/marks/junie.png" alt="" width="20" height="20"> Junie ·
-<img src="site/marks/kilocode.png" alt="" width="20" height="20"> Kilo Code ·
-<img src="site/marks/mcode.png" alt="" width="20" height="20"> MCode ·
-**Mux** ·
-<img src="site/marks/octomind.png" alt="" width="20" height="20"> Octomind ·
-<img src="site/marks/pool.png" alt="" width="20" height="20"> Poolside ·
-<img src="site/marks/qoder.png" alt="" width="20" height="20"> Qoder ·
-<img src="site/marks/trae.png" alt="" width="20" height="20"> Trae ·
-<img src="site/marks/zeroclaw.png" alt="" width="20" height="20"> ZeroClaw
+<table>
+<thead><tr><th scope="col">Read via</th><th colspan="3" scope="colgroup">Harnesses</th></tr></thead>
+<tbody>
+<tr><th rowspan="2" scope="rowgroup">Direct or acpx</th><td><img src="site/marks/openclaw.png" alt="" width="20" height="20"> OpenClaw</td><td><img src="site/marks/claude.png" alt="" width="20" height="20"> Claude Code</td><td><img src="site/marks/codex.png" alt="" width="20" height="20"> Codex</td></tr>
+<tr><td><img src="site/marks/opencode.png" alt="" width="20" height="20"> OpenCode</td><td><img src="site/marks/gemini.png" alt="" width="20" height="20"> Gemini CLI</td><td><img src="site/marks/pi.png" alt="" width="20" height="20"> Pi</td></tr>
+</tbody>
+<tbody>
+<tr><th rowspan="8" scope="rowgroup">acpx</th><td><img src="site/marks/cursor.png" alt="" width="20" height="20"> Cursor</td><td><img src="site/marks/copilot.png" alt="" width="20" height="20"> GitHub Copilot</td><td><img src="site/marks/goose.png" alt="" width="20" height="20"> Goose</td></tr>
+<tr><td><img src="site/marks/kiro.png" alt="" width="20" height="20"> Kiro</td><td><img src="site/marks/kimi.png" alt="" width="20" height="20"> Kimi</td><td><img src="site/marks/qwen.png" alt="" width="20" height="20"> Qwen Code</td></tr>
+<tr><td><img src="site/marks/antigravity.png" alt="" width="20" height="20"> Antigravity</td><td><img src="site/marks/ante.png" alt="" width="20" height="20"> Ante</td><td><img src="site/marks/deepseek-harness.png" alt="" width="20" height="20"> DeepSeek Harness</td></tr>
+<tr><td><img src="site/marks/devin.png" alt="" width="20" height="20"> Devin</td><td><strong>Factory Droid</strong></td><td><img src="site/marks/fast-agent.png" alt="" width="20" height="20"> fast-agent</td></tr>
+<tr><td><strong>fx</strong></td><td><img src="site/marks/grok-build.png" alt="" width="20" height="20"> Grok Build</td><td><strong>iFlow</strong></td></tr>
+<tr><td><img src="site/marks/junie.png" alt="" width="20" height="20"> Junie</td><td><img src="site/marks/kilocode.png" alt="" width="20" height="20"> Kilo Code</td><td><img src="site/marks/mcode.png" alt="" width="20" height="20"> MCode</td></tr>
+<tr><td><strong>Mux</strong></td><td><img src="site/marks/octomind.png" alt="" width="20" height="20"> Octomind</td><td><img src="site/marks/pool.png" alt="" width="20" height="20"> Poolside</td></tr>
+<tr><td><img src="site/marks/qoder.png" alt="" width="20" height="20"> Qoder</td><td><img src="site/marks/trae.png" alt="" width="20" height="20"> Trae</td><td><img src="site/marks/zeroclaw.png" alt="" width="20" height="20"> ZeroClaw</td></tr>
+</tbody>
+</table>
 
 For a session saved by acpx 0.22.0, run `beam list --from acpx:PROFILE` in the project where you used it. The [acpx registry](https://github.com/openclaw/acpx/blob/v0.22.0/docs/agents.md) lists the profile IDs. Beam marks these exports partial because acpx keeps bounded history. You can also pack a local text file or stdin.
 
@@ -99,6 +81,18 @@ beam share task.beam.json --to https://gateway.example
 ```
 
 </details>
+
+## Images and files
+
+On `main`, bundle screenshots, PDFs, text, audio, or video with a reviewed conversation. Choose each attachment explicitly. Beam preserves its original bytes, including embedded metadata. Check the files as well as the messages before sharing.
+
+```sh
+beam bundle create task.beam.json --attach screenshot.png --attach brief.pdf --out task.beam.zip
+beam bundle inspect task.beam.zip
+beam bundle preview task.beam.zip --out task.html
+```
+
+Open `task.html` to see the conversation and its media offline. Send the ZIP to preserve the original files and exact `packet.beam.json`. OpenClaw's v1 and v2 snapshot endpoints accept the text packet. Send the bundle separately when your recipient also needs the attachments. [View the example](https://openclaw.github.io/beam/example.html) · [Bundle format and limits](docs/standalone-beam.md#portable-asset-bundles)
 
 ## Other export destinations
 
