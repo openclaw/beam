@@ -3,7 +3,6 @@
 package clean
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -148,8 +147,7 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 		speakers = speakers[n:]
 		r.Truncated = true
 	}
-	// At most 200 retained items. Compute an upper bound including their
-	// eventual aliases, then measure the exact final JSON once.
+	// Assign packet-local aliases before measuring their encoded cost.
 	aliases := map[string]string{}
 	for i, s := range speakers {
 		if s != "" {
@@ -160,22 +158,22 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 		}
 	}
 	p.Truncated = r.Truncated
-	raw, err := json.Marshal(p)
-	if err != nil {
+	if _, err := packet.Marshal(p); err == nil {
+		return p, r, nil
+	} else if err != packet.ErrTooLarge {
 		return packet.Packet{}, r, err
 	}
-	if len(raw) > packet.MaxBytes {
-		p.Truncated = true
-		// Use actual encoding costs, including Go's JSON character escaping.
-		raw, _ = json.Marshal(p)
-		size := len(raw)
-		for size > packet.MaxBytes && len(p.Items) > 1 {
-			old, _ := json.Marshal(p.Items[0])
-			size -= len(old) + 1
-			p.Items = p.Items[1:]
-		}
-		r.Truncated = true
-	}
+	// Removing an older item only reduces the minimum wire size. Find the
+	// longest suffix the packet writer accepts with the truncation flag set.
+	p.Truncated = true
+	r.Truncated = true
+	items := p.Items
+	skip := sort.Search(len(items), func(i int) bool {
+		p.Items = items[i:]
+		_, err := packet.Marshal(p)
+		return err != packet.ErrTooLarge
+	})
+	p.Items = items[skip:]
 	if _, err := packet.Marshal(p); err != nil {
 		return packet.Packet{}, r, err
 	}

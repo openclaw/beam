@@ -3,7 +3,6 @@ package packet
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"strings"
 )
@@ -60,11 +59,7 @@ func V1Projection(p Packet) ([]byte, error) {
 	for _, i := range p.Items {
 		old.Items = append(old.Items, LegacyItem{Type: i.Type, Text: i.Text})
 	}
-	b, err := json.Marshal(old)
-	if len(b) > MaxBytes {
-		return nil, errors.New("v1 projection exceeds 56 KiB")
-	}
-	return b, err
+	return marshalBounded(old, errors.New("v1 projection exceeds 56 KiB"))
 }
 
 // LegacySourceID preserves links produced by the released agent-skills CLI.

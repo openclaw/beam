@@ -3,6 +3,7 @@ package clean
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -11,6 +12,28 @@ import (
 
 func candidate(items ...Item) Candidate {
 	return Candidate{Source: "codex", Origin: Origin{"codex", "fixture-home", "session-1"}, Title: "CSV importer", UpdatedAt: "2024-02-29T01:02:03Z", Items: items, Completeness: "complete"}
+}
+
+func TestCompactBudgetKeepsNewestItems(t *testing.T) {
+	for _, tc := range []struct{ input, want int }{{3, 3}, {10, 9}, {200, 9}} {
+		items := make([]Item, tc.input)
+		for i := range items {
+			items[i] = Item{Type: "userMessage", Text: strconv.Itoa(i) + strings.Repeat("&", 5997)}
+		}
+		p, report, err := Build(candidate(items...), Options{})
+		if err != nil || len(p.Items) != tc.want {
+			t.Fatalf("%d input items: kept %d, want %d (err %v)", tc.input, len(p.Items), tc.want, err)
+		}
+		wantTruncated := tc.input > tc.want
+		if report.Truncated != wantTruncated || p.Truncated != wantTruncated {
+			t.Fatalf("%d input items: incorrect truncation state", tc.input)
+		}
+		for i, item := range p.Items {
+			if item.Text != items[tc.input-tc.want+i].Text {
+				t.Fatalf("%d input items: changed item %d", tc.input, i)
+			}
+		}
+	}
 }
 
 func TestCleanerGolden(t *testing.T) {
