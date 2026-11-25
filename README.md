@@ -92,7 +92,14 @@ beam bundle inspect task.beam.zip
 beam bundle preview task.beam.zip --out task.html
 ```
 
-Open `task.html` to see the conversation and its media offline. Send the ZIP to preserve the original files and exact `packet.beam.json`. OpenClaw's v1 and v2 snapshot endpoints accept the text packet. Send the bundle separately when your recipient also needs the attachments. [View the example](https://openclaw.github.io/beam/example.html) · [Bundle format and limits](docs/standalone-beam.md#portable-asset-bundles)
+Open `task.html` to see the conversation and its media offline. Send the ZIP to preserve the original files and exact `packet.beam.json`. For a Gateway advertising `publishScreenshot`, create a bundle containing just the reviewed v2 packet and the PNG. The share command prints a link for people who have access to the snapshot.
+
+```sh
+beam bundle create task.beam.json --attach screenshot.png --out screenshot.beam.zip
+beam share screenshot.beam.zip --to https://gateway.example
+```
+
+Other bundle types travel as a ZIP. On a text-only Gateway, share the reviewed packet and send the ZIP separately. [View the example](https://openclaw.github.io/beam/example.html) · [Bundle format and limits](docs/standalone-beam.md#portable-asset-bundles)
 
 ## Other export destinations
 

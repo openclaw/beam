@@ -1,10 +1,12 @@
 package receiver
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/openclaw/beam/internal/bundle"
 	"io"
 	"os"
 	"path/filepath"
@@ -120,7 +122,7 @@ func resolveEndpoint(name string) (string, error) {
 	}
 	return names[name], nil
 }
-func packetInput(name string, stdin io.Reader) ([]byte, error) {
+func packetInput(name string, stdin io.Reader, allowBundle bool) ([]byte, error) {
 	if name == "" {
 		return nil, failure("snapshot_file_required", "never")
 	}
@@ -133,11 +135,16 @@ func packetInput(name string, stdin io.Reader) ([]byte, error) {
 		defer f.Close()
 		r = f
 	}
-	b, err := io.ReadAll(io.LimitReader(r, packet.MaxBytes+1))
+	reader := bufio.NewReader(r)
+	limit := packet.MaxBytes
+	if magic, _ := reader.Peek(4); allowBundle && string(magic) == "PK\x03\x04" {
+		limit = bundle.MaxArchiveBytes
+	}
+	b, err := io.ReadAll(io.LimitReader(reader, int64(limit)+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(b) > packet.MaxBytes {
+	if len(b) > limit {
 		return nil, failure("too_large", "never")
 	}
 	return b, nil
@@ -223,10 +230,14 @@ func run(ctx context.Context, name string, args []string, stdin io.Reader, stdou
 	switch name {
 	case "share", "handoff":
 		if o.arg != "" || name == "share" {
-			raw, err = packetInput(o.arg, stdin)
+			raw, err = packetInput(o.arg, stdin, name == "share")
 			if err != nil {
 				break
 			}
+		}
+		if name == "share" && len(raw) >= 4 && string(raw[:4]) == "PK\x03\x04" {
+			result, err = c.shareScreenshot(ctx, raw, o.id)
+			break
 		}
 		var meta struct {
 			Version int    `json:"version"`

@@ -16,6 +16,7 @@ import (
 )
 
 type Capabilities struct {
+	MaxScreenshotBytes          int      `json:"maxScreenshotBytes,omitempty"`
 	Protocol                    int      `json:"protocol"`
 	PacketVersions              []int    `json:"packetVersions"`
 	Operations                  []string `json:"operations"`
@@ -45,16 +46,17 @@ func require(c Capabilities, op string) error {
 }
 
 type Publication struct {
-	BeamID        string `json:"beamId"`
-	PublicationID string `json:"publicationId"`
-	Revision      string `json:"revision"`
-	Digest        string `json:"digest"`
-	Disposition   string `json:"disposition,omitempty"`
-	URL           string `json:"url"`
-	APIURL        string `json:"apiUrl,omitempty"`
-	SnapshotURL   string `json:"snapshotUrl,omitempty"`
-	CanRelease    bool   `json:"canRelease"`
-	State         string `json:"state,omitempty"`
+	PresentationDigest string `json:"presentationDigest,omitempty"`
+	BeamID             string `json:"beamId"`
+	PublicationID      string `json:"publicationId"`
+	Revision           string `json:"revision"`
+	Digest             string `json:"digest"`
+	Disposition        string `json:"disposition,omitempty"`
+	URL                string `json:"url"`
+	APIURL             string `json:"apiUrl,omitempty"`
+	SnapshotURL        string `json:"snapshotUrl,omitempty"`
+	CanRelease         bool   `json:"canRelease"`
+	State              string `json:"state,omitempty"`
 }
 
 var etagRE = regexp.MustCompile(`^"[!#-~]{1,254}"$`)
@@ -133,9 +135,9 @@ func (c *Client) Share(ctx context.Context, data []byte) (Publication, error) {
 	if err != nil {
 		return Publication{}, err
 	}
-	return c.share(ctx, caps, data)
+	return c.sharePacket(ctx, caps, data, false)
 }
-func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Publication, error) {
+func (c *Client) sharePacket(ctx context.Context, caps Capabilities, data []byte, preservePreviewOnHandoff bool) (Publication, error) {
 	if err := require(caps, "publish"); err != nil {
 		return Publication{}, err
 	}
@@ -146,22 +148,25 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 	if err != nil {
 		return Publication{}, failure("invalid_packet", "never")
 	}
+	return c.publish(ctx, p.BeamID, data, packet.Digest(data), "", preservePreviewOnHandoff)
+}
+
+func (c *Client) publish(ctx context.Context, beamID string, data []byte, digest, presentationDigest string, preservePreviewOnHandoff bool) (Publication, error) {
 	s, err := c.journal()
 	if err != nil {
 		return Publication{}, err
 	}
-	if _, found, err := s.Legacy(ctx, c.legacyEndpoint, p.BeamID); err != nil {
+	if _, found, err := s.Legacy(ctx, c.legacyEndpoint, beamID); err != nil {
 		return Publication{}, err
 	} else if found {
 		return Publication{}, failure("source_retired", "after_reconcile")
 	}
-	digest := packet.Digest(data)
-	pending, found, err := s.Pending(ctx, c.legacyEndpoint, "publish", p.BeamID)
+	pending, found, err := s.Pending(ctx, c.legacyEndpoint, "publish", beamID)
 	if err != nil {
 		return Publication{}, err
 	}
 	if !found {
-		head, exists, err := c.head(ctx, p.BeamID)
+		head, exists, err := c.head(ctx, beamID)
 		if err != nil {
 			return Publication{}, err
 		}
@@ -170,7 +175,7 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 			if head.State == "released" || head.State == "ready" || head.State == "released_unbound" {
 				return Publication{}, failure("source_retired", "after_reconcile")
 			}
-			if head.State != "legacy_unbound" && head.Digest == digest {
+			if head.State != "legacy_unbound" && head.Digest == digest && (preservePreviewOnHandoff || head.PresentationDigest == presentationDigest) {
 				head.Disposition = "unchanged"
 				return head, nil
 			}
@@ -180,7 +185,7 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 		if err != nil {
 			return Publication{}, err
 		}
-		pending, err = s.Begin(ctx, journal.Pending{Endpoint: c.legacyEndpoint, Kind: "publish", Resource: p.BeamID, ID: key, Body: data, Condition: condition, Created: time.Now()})
+		pending, err = s.Begin(ctx, journal.Pending{Endpoint: c.legacyEndpoint, Kind: "publish", Resource: beamID, ID: key, Body: data, Condition: condition, Created: time.Now()})
 		if err != nil {
 			return Publication{}, err
 		}
@@ -194,7 +199,7 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 			return Publication{}, err
 		}
 	}
-	pub, putErr := c.putSnapshot(ctx, pending, digest)
+	pub, putErr := c.putSnapshot(ctx, pending, digest, presentationDigest)
 	switch {
 	case putErr == nil || asHTTP(putErr, http.StatusPreconditionFailed):
 		// A receiver replays a committed success before checking its old precondition.
@@ -217,8 +222,11 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 	return pub, putErr
 }
 
-func (c *Client) putSnapshot(ctx context.Context, pending journal.Pending, digest string) (Publication, error) {
+func (c *Client) putSnapshot(ctx context.Context, pending journal.Pending, digest, presentationDigest string) (Publication, error) {
 	h := http.Header{"Idempotency-Key": {pending.ID}}
+	if presentationDigest != "" {
+		h.Set("Content-Type", screenshotContentType)
+	}
 	if pending.Condition == "*" {
 		h.Set("If-None-Match", "*")
 	} else {
@@ -230,7 +238,7 @@ func (c *Client) putSnapshot(ctx context.Context, pending journal.Pending, diges
 		return Publication{}, err
 	}
 	var pub Publication
-	if json.Unmarshal(r.body, &pub) != nil || pub.Digest != digest || !slices.Contains([]string{"applied", "unchanged"}, pub.Disposition) {
+	if json.Unmarshal(r.body, &pub) != nil || pub.Digest != digest || pub.PresentationDigest != presentationDigest || !slices.Contains([]string{"applied", "unchanged"}, pub.Disposition) {
 		return Publication{}, failure("invalid_publish_receipt", "after_reconcile")
 	}
 	if err := c.checkPublication(&pub, pending.Resource, suffix); err != nil {
@@ -271,7 +279,8 @@ func (c *Client) Handoff(ctx context.Context, id string, data []byte) (Release, 
 		if err != nil || p.BeamID != id {
 			return Release{}, failure("selected_snapshot_required", "never")
 		}
-		pub, err := c.share(ctx, caps, data)
+		// Releasing an existing publication preserves its reviewed preview when the packet matches.
+		pub, err := c.sharePacket(ctx, caps, data, true)
 		if err != nil {
 			return Release{}, err
 		}

@@ -57,7 +57,12 @@ type Error struct {
 	Retry string
 }
 
-func (e *Error) Error() string          { return "Beam receiver: " + e.Code }
+func (e *Error) Error() string {
+	if e.Code == "screenshot_unsupported" {
+		return "This receiver cannot publish screenshots. Send the reviewed ZIP separately or choose a receiver with screenshot support."
+	}
+	return "Beam receiver: " + e.Code
+}
 func failure(code, retry string) *Error { return &Error{Code: code, Retry: retry} }
 
 func New(cfg Config) (*Client, error) {
