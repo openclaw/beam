@@ -25,6 +25,7 @@ const usage = `Usage: beam COMMAND [options]
   beam review FILE                           Number visible items; edit with --keep N or --omit N
   beam convert FILE --packet-version 1       Prepare and preview an explicit v1 projection
   beam render FILE [--out FILE]              Render a packet as quoted Markdown
+  beam plan FILE --in HARNESS                 Preview destination behavior without opening or sending
   beam open FILE --in HARNESS                Open an independent copy or reviewed reference
   beam push --from A --session ID --to B     Copy one selected conversation to another harness
   beam resolve --in HARNESS --handle ID      Resolve an existing local reference
@@ -150,7 +151,7 @@ func hasOption(args []string, prefix string) bool {
 }
 
 func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, in io.Reader, out, stderr io.Writer) (any, error) {
-	withFile := cmd == "review" || cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
+	withFile := cmd == "plan" || cmd == "review" || cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
 	if withFile && len(o.args) != 1 {
 		return nil, fmt.Errorf("%s requires exactly one file or -", cmd)
 	}
@@ -243,7 +244,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 			return nil, err
 		}
 		return open(ctx, dst, p, o)
-	case "inspect", "review", "render", "open", "convert":
+	case "inspect", "review", "render", "plan", "open", "convert":
 		p, b, err := inputPacket(o.args[0], in)
 		if err != nil {
 			return nil, err
@@ -303,6 +304,9 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		dst, err := a.selectAdapter(reg, o.values["in"])
 		if err != nil {
 			return nil, err
+		}
+		if cmd == "plan" {
+			return plan(ctx, dst, o, b, out)
 		}
 		return open(ctx, dst, p, o)
 	case "send", "resolve", "lookup":

@@ -184,27 +184,9 @@ func open(ctx context.Context, dst adapter.Adapter, p packet.Packet, o options) 
 	if err != nil {
 		return nil, err
 	}
-	mode := o.values["mode"]
-	if mode == "" {
-		mode = "auto"
-	}
-	var op string
-	switch mode {
-	case "auto":
-		if slices.Contains(c.Destination, "openCopy") {
-			op = "openCopy"
-		} else {
-			op = "stageReference"
-		}
-	case "native":
-		op = "openCopy"
-	case "stage", "manual":
-		op = "stageReference"
-	default:
-		return nil, fmt.Errorf("--mode must be auto, native, stage, or manual")
-	}
-	if !slices.Contains(c.Destination, op) {
-		return nil, adapter.Unsupported(op)
+	op, err := destinationOperation(c, o.values["mode"])
+	if err != nil {
+		return nil, err
 	}
 	message := o.values["message"]
 	if message != "" && !slices.Contains(c.Destination, "send") {
@@ -244,7 +226,7 @@ func open(ctx context.Context, dst adapter.Adapter, p packet.Packet, o options) 
 	default:
 		return nil, fmt.Errorf("adapter returned unknown delivery state")
 	}
-	if mode == "native" && res.State != "ready" {
+	if o.values["mode"] == "native" && res.State != "ready" {
 		return nil, adapter.Fail("needs_reconciliation", "after_reconcile", "adapter did not verify the requested native copy")
 	}
 	res.OperationID = operationID
