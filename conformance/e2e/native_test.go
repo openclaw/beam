@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -29,9 +31,8 @@ func (c cli) reopenCopy(t *testing.T, adapter string, packet []byte) receipt {
 	return created
 }
 
-// TestNativeRoundTrip requires installed real harness binaries and a synthetic
-// loopback model. Each Beam launch and each native target reopen is a new process.
-func TestNativeRoundTrip(t *testing.T) {
+func nativeFixture(t *testing.T) (cli, *modelCalls) {
+	t.Helper()
 	c := newCLI(t)
 	var paths []string
 	for _, name := range []string{"codex", "opencode"} {
@@ -48,7 +49,7 @@ func TestNativeRoundTrip(t *testing.T) {
 	c.env[0] = "PATH=" + strings.Join(append(paths, os.Getenv("PATH")), string(os.PathListSeparator))
 	model := new(modelCalls)
 	server := httptest.NewServer(model)
-	defer server.Close()
+	t.Cleanup(server.Close)
 	home := filepath.Join(filepath.Dir(c.dir), "home")
 	codexHome := filepath.Join(home, ".codex")
 	if err := os.MkdirAll(codexHome, 0700); err != nil {
@@ -60,6 +61,13 @@ func TestNativeRoundTrip(t *testing.T) {
 	}
 	ocConfig, _ := json.Marshal(map[string]any{"model": "openai/gpt-4.1", "provider": map[string]any{"openai": map[string]any{"options": map[string]string{"baseURL": server.URL + "/v1", "apiKey": "fixture-only"}}}})
 	c.env = append(c.env, "OPENCODE_CONFIG_CONTENT="+string(ocConfig), "OPENCODE_DISABLE_AUTOUPDATE=1", "OPENCODE_DISABLE_MODELS_FETCH=1")
+	return c, model
+}
+
+// TestNativeRoundTrip requires installed real harness binaries and a synthetic
+// loopback model. Each Beam launch and each native target reopen is a new process.
+func TestNativeRoundTrip(t *testing.T) {
+	c, model := nativeFixture(t)
 	// Start with an OpenCode-native session, export it to Codex, then extract
 	// that native Codex session to open a second, independent OpenCode copy.
 	first := c.reopenCopy(t, "opencode", c.reviewed(t))
@@ -85,5 +93,57 @@ func TestNativeRoundTrip(t *testing.T) {
 	requests := model.seen()
 	if len(requests) != 1 || !bytes.Contains(requests[0], []byte(sourceMarker)) || !bytes.Contains(requests[0], []byte(instruction)) {
 		t.Fatalf("expected one authorized model turn with the reviewed reference and the new instruction; model calls=%d", len(requests))
+	}
+}
+
+// The same adapter test command is available to third-party executables. Site
+// evidence is emitted only after all checks and the loopback assertion pass.
+func TestAdapterMatrix(t *testing.T) {
+	c, model := nativeFixture(t)
+	fixture, err := filepath.Abs("../../conformance/packet/example.beam.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type evidence struct {
+		TestVersion int    `json:"testVersion"`
+		Adapter     string `json:"adapter"`
+		Advertised  struct {
+			Version     string   `json:"version"`
+			Destination []string `json:"destination"`
+		} `json:"advertised"`
+		Observed []string `json:"observed"`
+	}
+	var rows []evidence
+	for _, id := range []string{"codex", "opencode", "file"} {
+		args := []string{"adapter", "test", "--in", id, "--fixture", fixture, "--json"}
+		required := []string{"capabilities", "ready", "same-reference-resolved", "reopened-items-match"}
+		if id == "file" {
+			args = append(args, "--session", fixture, "--mode", "stage", "--out", "reference.md")
+			required = []string{"capabilities", "selected-items-match", "manual"}
+		} else {
+			args = append(args, "--mode", "native")
+		}
+		var row evidence
+		machineResult(t, c.run(t, nil, args...), &row)
+		if row.TestVersion != 1 || row.Adapter != id || row.Advertised.Version == "" || !slices.Equal(row.Observed, required) {
+			t.Fatalf("unexpected %s evidence: %+v", id, row)
+		}
+		rows = append(rows, row)
+	}
+	got, err := os.ReadFile(filepath.Join(c.dir, "reference.md"))
+	if err != nil || !bytes.Equal(got, c.run(t, nil, "render", fixture)) {
+		t.Fatalf("manual Markdown differs from reviewed fixture: %v", err)
+	}
+	if n := len(model.seen()); n != 0 {
+		t.Fatalf("passive checks made %d model requests", n)
+	}
+	if path := os.Getenv("BEAM_E2E_MATRIX"); path != "" {
+		report, err := json.MarshalIndent(map[string]any{"platform": runtime.GOOS + "/" + runtime.GOARCH, "modelRequests": len(model.seen()), "adapters": rows}, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, append(report, '\n'), 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

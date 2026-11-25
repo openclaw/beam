@@ -34,6 +34,7 @@ const usage = `Usage: beam COMMAND [options]
   beam share|handoff FILE --to ENDPOINT      Publish or release a reviewed packet
   beam pull LINK --out FILE                  Read an authorized remote snapshot
   beam continue LINK --message TEXT          Send a new instruction at the destination
+  beam adapter test --in HARNESS             Verify protocol capabilities and optional fixture operations
   beam adapter --in HARNESS                  Serve one protocol-1 request on stdin
 
 Use - for stdin or stdout. Use --json for machine receipts, --dry-run for a push
@@ -51,6 +52,9 @@ func (a App) Run(ctx context.Context, args []string, in io.Reader, out, stderr i
 		return 0
 	}
 	cmd, argv := args[0], args[1:]
+	if cmd == "adapter" && len(argv) > 0 && argv[0] == "test" {
+		cmd, argv = "adapter test", argv[1:]
+	}
 	jsonMode := cmd == "adapter" || slices.Contains(argv, "--json")
 	fail := func(err error) int {
 		if jsonMode {
@@ -159,6 +163,15 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		return nil, fmt.Errorf("unexpected positional argument for %s", cmd)
 	}
 	switch cmd {
+	case "adapter test":
+		if err := o.require("in"); err != nil {
+			return nil, err
+		}
+		dst, err := a.selectAdapter(reg, o.values["in"])
+		if err != nil {
+			return nil, err
+		}
+		return testAdapter(ctx, dst, o, in)
 	case "capabilities":
 		info := map[string]any{"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "packetVersions": []int{1, 2}, "adapters": keys(reg)}
 		if a.Legacy != nil {
