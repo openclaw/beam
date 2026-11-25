@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -126,4 +127,64 @@ func TestReleasedOpenClawSnapshotUpgrade(t *testing.T) {
 			t.Fatal("read-only upgrade changed the original snapshot")
 		}
 	})
+}
+
+// Follow the published quickstart against the released v1 Gateway. The input
+// comes from OpenCode running through acpx and contains only synthetic turns.
+func TestACPXToReleasedOpenClaw(t *testing.T) {
+	input := os.Getenv("BEAM_E2E_ACPX_PACKET")
+	if input == "" {
+		t.Skip("set BEAM_E2E_ACPX_PACKET to the native OpenCode ACP test's sample")
+	}
+	c := newCLI(t)
+	models := new(modelCalls)
+	server := httptest.NewServer(models)
+	defer server.Close()
+	g := newGateway(t, c, server.URL)
+	const token = "synthetic-gateway-token-for-this-test"
+	g.cli(t, "config", "set", "gateway.auth", `{"mode":"token","token":"`+token+`"}`, "--strict-json")
+	g.cli(t, "plugins", "enable", "beam")
+	g.start(t)
+
+	file := filepath.Join(c.dir, "task.v1.json")
+	c.run(t, nil, "convert", input, "--packet-version", "1", "--out", file)
+	raw := c.run(t, nil, "inspect", file)
+	var selected struct {
+		Version        int
+		BeamID, Source string
+		Items          []struct{ Type, Text string }
+	}
+	if err := json.Unmarshal(raw, &selected); err != nil || selected.Version != 1 || selected.Source != "acpx" || len(selected.Items) != 2 ||
+		!strings.Contains(selected.Items[0].Text, sourceMarker) || !strings.Contains(selected.Items[0].Text, "[REDACTED_EMAIL]") ||
+		selected.Items[1].Text != "The fixture received your authorized prompt." {
+		t.Fatal("expected the reviewed native acpx:opencode fixture")
+	}
+	base := "http://127.0.0.1:" + g.port
+	c.env = append(c.env, "BEAM_AUTH_TOKEN="+token)
+	var receipt struct {
+		OK          bool
+		BeamID, URL string
+	}
+	machineResult(t, c.run(t, nil, "share", file, "--to", base+"/api/v1/beam/sessions", "--json"), &receipt)
+	if !receipt.OK || receipt.BeamID != selected.BeamID || !strings.HasPrefix(receipt.URL, base+"/beam/") {
+		t.Fatalf("unexpected OpenClaw receipt: %+v", receipt)
+	}
+	g.stop()
+	uri := url.URL{Scheme: "file", Path: filepath.Join(filepath.Dir(g.log), "state", "openclaw.sqlite"), RawQuery: "mode=ro"}
+	db, err := sql.Open("sqlite", uri.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var row []byte
+	if err := db.QueryRow("SELECT value_json FROM plugin_state_entries WHERE plugin_id='beam' AND namespace='sessions' AND entry_key=?", selected.BeamID).Scan(&row); err != nil {
+		t.Fatal(err)
+	}
+	var saved struct {
+		Source string
+		Items  []struct{ Type, Text string }
+	}
+	if err := json.Unmarshal(row, &saved); err != nil || saved.Source != selected.Source || !slices.Equal(saved.Items, selected.Items) || len(models.seen()) != 0 {
+		t.Fatal("released Gateway did not retain the reviewed turns passively")
+	}
 }

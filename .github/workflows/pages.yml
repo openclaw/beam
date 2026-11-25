@@ -2,7 +2,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: &matrix_paths ['site/**', '**/*.go', 'go.mod', 'go.sum', 'conformance/packet/example.beam.json', 'scripts/render-matrix.py', '.github/workflows/pages.yml']
+    paths: &matrix_paths ['site/**', 'conformance/e2e/acpx-profiles.mjs', 'internal/adapters/acp/testdata/agent.mjs', '**/*.go', 'go.mod', 'go.sum', 'conformance/packet/example.beam.json', 'scripts/render-matrix.py', '.github/workflows/pages.yml']
   pull_request:
     paths: *matrix_paths
   workflow_dispatch:
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     permissions:
       contents: read
       pages: read
@@ -31,12 +31,18 @@ jobs:
       - name: Verify synthetic handoffs and render the matrix
         run: |
           go build -o "$RUNNER_TEMP/beam" ./cmd/beam
-          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/harnesses" @openai/codex@0.172.0 opencode-ai@1.19.6
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/harnesses" @openai/codex@0.172.0 opencode-ai@1.19.6 acpx@0.22.0
           export BEAM_E2E_BINARY="$RUNNER_TEMP/beam"
           export BEAM_E2E_CODEX="$RUNNER_TEMP/harnesses/node_modules/.bin/codex"
           export BEAM_E2E_OPENCODE="$RUNNER_TEMP/harnesses/node_modules/.bin/opencode"
           export BEAM_E2E_MATRIX="$GITHUB_WORKSPACE/site/matrix.json"
-          go test -count=1 -tags=beam_native ./conformance/e2e -run '^TestAdapterMatrix$'
+          export BEAM_TEST_ACPX="$RUNNER_TEMP/harnesses/node_modules/.bin/acpx"
+          export BEAM_E2E_ACPX_PACKET="$RUNNER_TEMP/acpx.beam.json"
+          go test -count=1 -tags=beam_native ./conformance/e2e -run '^(TestAdapterMatrix|TestACPXNativeOpenCode)$'
+          node conformance/e2e/acpx-profiles.mjs site/acpx.json
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/gateway" openclaw@2026.11.10
+          export BEAM_E2E_OPENCLAW="$RUNNER_TEMP/gateway/node_modules/.bin/openclaw"
+          go test -count=1 -tags=beam_openclaw ./conformance/e2e -run '^TestACPXToReleasedOpenClaw$'
           python3 scripts/render-matrix.py site
       - if: github.event_name != 'pull_request'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6

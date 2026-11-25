@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f6ef">
-  <meta name="description" content="Move a reviewed conversation from one coding agent to another. Beam cleans the history locally and packages the messages you choose.">
-  <meta property="og:title" content="Beam · Conversation handoffs for coding agents">
-  <meta property="og:description" content="Pack a session, inspect its messages, and open a copy in another agent.">
+  <meta name="description" content="Export sessions from coding harnesses to OpenClaw. See direct integrations and 30 acpx profiles, review the cleaned packet, then share it with your team.">
+  <meta property="og:title" content="Beam · Bring coding sessions to OpenClaw">
+  <meta property="og:description" content="Export directly or through acpx, review the messages locally, and share a snapshot with OpenClaw.">
   <meta property="og:image" content="https://openclaw.github.io/beam/beam-cover.webp">
-  <title>Beam · Conversation handoffs for coding agents</title>
+  <title>Beam · Bring coding sessions to OpenClaw</title>
   <link rel="stylesheet" href="beam.css">
 </head>
 <body id="top">
@@ -24,43 +24,92 @@
   <main id="main" tabindex="-1">
     <section class="hero wrap" aria-labelledby="title">
       <div class="hero-copy">
-        <h1 id="title">Hand off a<br><em>conversation.</em></h1>
-        <p>Move the history of a coding session from one agent to another. Beam cleans the messages locally so you can read exactly what you’re sharing.</p>
-        <div class="actions">
-          <a class="button" href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download v0.1.0 <span aria-hidden="true">↗</span></a>
-          <a class="text-action" href="#usage">Try Beam <span aria-hidden="true">↓</span></a>
+        <h1 id="title">Bring your sessions<br>to <em>OpenClaw.</em></h1>
+        <p>Pick a conversation from your coding harness, clean it locally, and share the reviewed messages with your OpenClaw team.</p>
+        <div class="actions"><a class="button" href="#usage">Share to OpenClaw <span aria-hidden="true">↓</span></a>
+          <a class="text-action" href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download v0.1.0 <span aria-hidden="true">↗</span></a></div>
+      </div>
+      <div class="routes" aria-label="Sources and destinations">
+        <div class="inputs">
+          <h2>Read from</h2>
+          <h3>Direct or via acpx</h3>
+          <ul class="marks">
+              <li data-profile="openclaw"><img src="marks/openclaw.png" alt="" width="24" height="24"><span>OpenClaw</span></li>
+              <li data-profile="claude"><img src="marks/claude.png" alt="" width="24" height="24"><span>Claude Code</span></li>
+              <li data-profile="codex"><img src="marks/codex.png" alt="" width="24" height="24"><span>Codex</span></li>
+              <li data-profile="opencode"><img src="marks/opencode.png" alt="" width="24" height="24"><span>OpenCode</span></li>
+              <li data-profile="gemini"><img src="marks/gemini.png" alt="" width="24" height="24"><span>Gemini CLI</span></li>
+              <li data-profile="pi"><img src="marks/pi.png" alt="" width="24" height="24"><span>Pi</span></li>
+          </ul>
+          <h3>Via acpx <span>· sessions saved in this project</span></h3>
+          <ul class="marks">
+              <li data-profile="cursor"><img src="marks/cursor.png" alt="" width="24" height="24"><span>Cursor</span></li>
+              <li data-profile="copilot"><img src="marks/copilot.png" alt="" width="24" height="24"><span>GitHub Copilot</span></li>
+              <li data-profile="goose"><img src="marks/goose.png" alt="" width="24" height="24"><span>Goose</span></li>
+              <li data-profile="kiro"><img src="marks/kiro.png" alt="" width="24" height="24"><span>Kiro</span></li>
+              <li data-profile="kimi"><img src="marks/kimi.png" alt="" width="24" height="24"><span>Kimi</span></li>
+              <li data-profile="qwen"><img src="marks/qwen.png" alt="" width="24" height="24"><span>Qwen Code</span></li>
+              <li data-profile="antigravity"><img src="marks/antigravity.png" alt="" width="24" height="24"><span>Antigravity</span></li>
+              <li data-profile="ante"><img src="marks/ante.png" alt="" width="24" height="24"><span>Ante</span></li>
+              <li data-profile="deepseek-harness"><img src="marks/deepseek-harness.png" alt="" width="24" height="24"><span>DeepSeek Harness</span></li>
+              <li data-profile="devin"><img src="marks/devin.png" alt="" width="24" height="24"><span>Devin</span></li>
+              <li data-profile="droid"><b class="wordmark">Factory Droid</b></li>
+              <li data-profile="fast-agent"><img src="marks/fast-agent.png" alt="" width="24" height="24"><span>fast-agent</span></li>
+              <li data-profile="fx"><b class="wordmark">fx</b></li>
+              <li data-profile="grok-build"><img src="marks/grok-build.png" alt="" width="24" height="24"><span>Grok Build</span></li>
+              <li data-profile="iflow"><b class="wordmark">iFlow</b></li>
+              <li data-profile="junie"><img src="marks/junie.png" alt="" width="24" height="24"><span>Junie</span></li>
+              <li data-profile="kilocode"><img src="marks/kilocode.png" alt="" width="24" height="24"><span>Kilo Code</span></li>
+              <li data-profile="mcode"><img src="marks/mcode.png" alt="" width="24" height="24"><span>MCode</span></li>
+              <li data-profile="mux"><b class="wordmark">Mux</b></li>
+              <li data-profile="octomind"><img src="marks/octomind.png" alt="" width="24" height="24"><span>Octomind</span></li>
+              <li data-profile="pool"><img src="marks/pool.png" alt="" width="24" height="24"><span>Poolside</span></li>
+              <li data-profile="qoder"><img src="marks/qoder.png" alt="" width="24" height="24"><span>Qoder</span></li>
+              <li data-profile="trae"><img src="marks/trae.png" alt="" width="24" height="24"><span>Trae</span></li>
+              <li data-profile="zeroclaw"><img src="marks/zeroclaw.png" alt="" width="24" height="24"><span>ZeroClaw</span></li>
+          </ul>
+          <p class="file-input">Also accepts a text file, stdin or a Beam packet.</p>
+        </div>
+        <div class="outputs">
+          <h2>Export to</h2>
+          <a class="target" href="#usage"><img src="marks/openclaw.png" width="42" height="42" alt=""><strong>OpenClaw</strong><span>Share a snapshot with your team <b aria-hidden="true">↗</b></span></a>
+          <p class="other-label">Other destinations</p>
+          <dl><dt>Native session</dt><dd>Codex · OpenCode</dd>
+            <dt>Staged reference</dt><dd>Claude Code · Pi · acpx profiles</dd>
+            <dt>Session file</dt><dd>Gemini CLI</dd>
+            <dt>Markdown</dt><dd>Any tool that accepts a file</dd></dl>
         </div>
       </div>
-      <figure class="handoff">
-        <div class="optics" aria-hidden="true"></div>
-        <figcaption><span>Codex</span><span aria-hidden="true">→</span><code>task.beam.json</code><span aria-hidden="true">→</span><span>OpenCode</span></figcaption>
-      </figure>
     </section>
 
     <section class="section workflow wrap" id="usage" aria-labelledby="usage-title">
       <div class="section-heading">
-        <h2 id="usage-title">Your first handoff</h2>
-        <p>Extract <code>beam</code> from the archive for macOS, Linux, or Windows and put it on your <code>PATH</code>. On Windows, the executable is <code>beam.exe</code>.</p>
-        <p>In your source project, run <code>beam list --from codex</code>. Replace <code>SESSION_ID</code> with the ID you choose.</p>
+        <h2 id="usage-title">From OpenCode to OpenClaw</h2>
+        <p>This example uses an OpenCode session saved through acpx 0.22.0. Run the commands in the project where acpx recorded the session. For a direct export from OpenCode, use <code>--from opencode</code> instead.</p>
+        <p>Install <a href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Beam v0.1.0</a> on your PATH. <a href="#gateway-title">Enable the receiving plugin</a> and set <code>BEAM_AUTH_TOKEN</code> to your Gateway bearer before sharing.</p>
       </div>
       <div>
         <div class="terminal">
-          <div class="terminal-head"><span>Codex → OpenCode</span><span>Shell</span></div>
-          <pre><code><span class="comment"># Export the selected messages</span>
-beam pack --from codex --session SESSION_ID \
+          <div class="terminal-head"><span>acpx:opencode → OpenClaw 2026.11.10</span><span>Shell</span></div>
+          <pre><code><span class="comment"># Choose a session from this project</span>
+beam list --from acpx:opencode
+beam pack --from acpx:opencode --session SESSION_ID \
   --out task.beam.json
 
-<span class="comment"># Read the packet and its digest</span>
-beam inspect task.beam.json
+<span class="comment"># Prepare and inspect the v1 packet</span>
+beam convert task.beam.json --packet-version 1 --out task.v1.json
+beam inspect task.v1.json
 
-<span class="comment"># Open an independent session</span>
-beam open task.beam.json --in opencode</code></pre>
+<span class="comment"># Replace the host with your Gateway</span>
+beam share task.v1.json \
+  --to https://gateway.example/api/v1/beam/sessions</code></pre>
         </div>
+        <p class="receipt">Open the <code>url</code> in the receipt to read the snapshot in OpenClaw. Sharing starts no model turn.</p>
         <details class="inline-details"><summary>Try it with a file instead</summary>
-          <p>These commands use only Beam and a POSIX shell.</p>
+          <p>Use a POSIX shell to create a packet without a harness. Continue with the conversion and sharing commands above.</p>
           <pre><code>printf '%s\n' 'Keep quoted newlines in the CSV parser.' |
-  beam pack --from file --session - --out sample.beam.json
-beam render sample.beam.json</code></pre>
+  beam pack --from file --session - --out task.beam.json
+beam render task.beam.json</code></pre>
         </details>
       </div>
     </section>
@@ -79,7 +128,7 @@ beam render sample.beam.json</code></pre>
     <section class="section wrap support" id="support" aria-labelledby="support-title">
       <div class="section-heading">
         <h2 id="support-title">Harness support</h2>
-        <p>Opening a copy or staging a reference starts zero model turns. Give the destination a new instruction when you want a reply. Run <code>beam doctor --json</code> to check your installation.</p>
+        <p>Direct adapters read native history. For an acpx recording, use <code>acpx:PROFILE</code> from the same project. The packet is marked partial because acpx retains a bounded history. Give the destination a new instruction when you want a reply. Run <code>beam doctor --json</code> to check your installation.</p>
       </div>
       <div>
         <table class="harness-table"><thead><tr><th scope="col">Harness</th><th scope="col">What you can do</th></tr></thead>
@@ -96,6 +145,7 @@ beam render sample.beam.json</code></pre>
         <details class="inline-details"><summary>Tested versions and fixture results</summary>
           <p>The <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#out-of-box-harness-coverage">versioned harness tests</a> cover native copies, staged references, and manual imports. The <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#qualification-on-openclaw-main">Gateway tests</a> cover private links, credential rotation, restart, and release.</p>
           <!-- adapter fixture results -->
+          <!-- acpx profile results -->
         </details>
       </div>
     </section>
@@ -103,25 +153,22 @@ beam render sample.beam.json</code></pre>
     <section class="section wrap connect" aria-labelledby="gateway-title">
       <div class="section-heading">
         <h2 id="gateway-title">Connect OpenClaw</h2>
-        <p>Enable Beam on the receiving Gateway. For a v2 receiver, share the file using your Gateway URL and its bearer credential in <code>BEAM_AUTH_TOKEN</code>.</p>
+        <p>On the receiving Gateway, enable Beam and restart. Give the sender the HTTPS endpoint and a credential allowed to publish. Readers sign in to the Gateway to open shared snapshots.</p>
         <a class="text-action" href="https://docs.openclaw.ai/plugins/beam">OpenClaw setup <span aria-hidden="true">↗</span></a>
       </div>
       <div>
         <pre class="plain-code"><code><span class="comment"># On the receiving Gateway</span>
 openclaw plugins enable beam
-openclaw gateway restart
-
-<span class="comment"># On the machine holding the packet</span>
-beam share task.beam.json --to https://gateway.example</code></pre>
+openclaw gateway restart</code></pre>
         <details class="inline-details"><summary>Cloudflare Access and receiver versions</summary>
           <p>Add <code>--cloudflare-login</code> to sign in through <code>cloudflared</code>. The Gateway still checks its own credential. The <a href="https://github.com/openclaw/beam#share-with-openclaw">README</a> covers service tokens and existing Access tokens.</p>
-          <p>OpenClaw 2026.11.8 serves v1. The v2 receiver is on <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">OpenClaw main from 7071b82</a>. For a v1 receiver, <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#operator-experience">prepare and review a v1 projection</a> before sharing.</p>
+          <p>The quickstart uses the <a href="https://github.com/openclaw/openclaw/blob/v2026.11.10/extensions/beam/index.ts">v1 receiver in OpenClaw 2026.11.10</a>. With a <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">v2 Gateway</a>, inspect <code>task.beam.json</code> and share it directly to the Gateway base URL. Use the returned private link to open it.</p>
         </details>
       </div>
     </section>
   </main>
   <footer class="wrap"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span>Beam</a>
-    <nav aria-label="Resources"><a href="https://github.com/openclaw/beam#on-the-main-branch">Tools on main</a><a href="https://github.com/openclaw/beam/tree/main/schema">Schemas</a><a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill</a><a href="https://github.com/openclaw/beam/blob/main/LICENSE">MIT</a></nav>
+    <nav aria-label="Resources"><a href="https://github.com/openclaw/beam#on-the-main-branch">Tools on main</a><a href="https://github.com/openclaw/beam/tree/main/schema">Schemas</a><a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill</a><a href="https://github.com/openclaw/beam/tree/main/site/marks">Logo credits</a><a href="https://github.com/openclaw/beam/blob/main/LICENSE">MIT</a></nav>
   </footer>
 </body>
 </html>

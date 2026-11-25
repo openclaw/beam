@@ -49,6 +49,13 @@ ssh devbox 'beam open - --in opencode --json' < repair.beam.json
 
 The command runs as the selected account on the target machine. It requires Beam and a supported target harness there. An interactive-only target returns a staged reference or a manual outcome. A shared Gateway sends only the history authorized for the requesting person to a child process.
 
+### OpenClaw quickstart conformance
+
+The [Pages workflow](../.github/workflows/pages.yml) pins acpx 0.22.0, OpenCode 1.19.6 and OpenClaw 2026.11.10. It runs two independent checks before publishing the [harness results](https://openclaw.github.io/beam/#support).
+
+- The [profile suite](../conformance/e2e/acpx-profiles.mjs) compares the homepage with the installed acpx registry. Each profile records a conversation with an offline ACP peer in a fresh project. Beam lists and packs the selected session, removes a test email and private blocks, stages the result and resolves the same reference. It also checks that changing projects or profiles hides the selected record.
+- The [OpenCode test](../conformance/e2e/native_test.go) starts the installed OpenCode ACP server through acpx and sends one instruction to a loopback model. The [Gateway test](../conformance/e2e/legacy_openclaw_test.go) takes that exact export, converts it to v1, inspects it and shares it with a bearer to an isolated OpenClaw Gateway. It checks the returned link, the stored messages, and zero model requests on the Gateway.
+
 ## Repository ownership and distribution
 
 | Repository | Current owner and contract |
