@@ -111,6 +111,7 @@ func TestShareReviewedScreenshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Close()
 	caps, err := client.Capabilities(t.Context())
 	if err != nil {
 		t.Fatal(err)
