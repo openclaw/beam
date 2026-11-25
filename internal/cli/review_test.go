@@ -1,12 +1,16 @@
 package cli
 
 import (
+	"bytes"
+	"slices"
+
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/openclaw/beam/internal/adapter"
 	"github.com/openclaw/beam/internal/packet"
 )
 
@@ -53,5 +57,58 @@ func TestReviewBindsVisibleSelectionToFrozenBytes(t *testing.T) {
 	}
 	if code != 0 || json.Unmarshal(b, &result) != nil || packet.Digest(result.Result.Packet) != result.Result.Digest {
 		t.Fatal(string(b))
+	}
+}
+
+func TestReviewPortableEscapesAndProtectedReceiptBytes(t *testing.T) {
+	// A third-party writer may use literal HTML characters and JS separators
+	// in JSON. Escaped backslashes are data and must survive compaction.
+	text := strings.Repeat("<&>\u2028\u2029", 950) + `\u003c\\u0026`
+	items := []packet.Item{
+		{Type: "other", Text: text}, {Type: "other", Text: text}, {Type: "other", Text: text}, {Type: "other", Text: "omit"},
+	}
+	p := packet.Packet{Version: 2, BeamID: "0123456789abcdef0123456789abcdef", Source: "file", Title: "Portable", UpdatedAt: "2026-01-01T00:00:00Z", Items: items}
+	// Encode the external fixture without relying on Beam's packet writer.
+	var encoded bytes.Buffer
+	enc := json.NewEncoder(&encoded)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", " ")
+	if err := enc.Encode(p); err != nil {
+		t.Fatal(err)
+	}
+	raw := strings.TrimSpace(encoded.String())
+	for _, flags := range [][]string{nil, {"--omit", "4", "--out", "-", "--expect-digest", packet.Digest([]byte(raw))}} {
+		args := append([]string{"review", "-", "--json"}, flags...)
+		code, b, diag := invoke(t, App{}, raw, args...)
+		var receipt struct {
+			Result struct {
+				Packet json.RawMessage
+				Digest string
+			}
+		}
+		if code != 0 || json.Unmarshal(b, &receipt) != nil {
+			t.Fatalf("review failed: %d %s", code, diag)
+		}
+		wire := receipt.Result.Packet
+		got, err := packet.Parse(wire)
+		if err != nil || packet.Digest(wire) != receipt.Result.Digest || got.Items[0].Text != text {
+			t.Fatalf("changed packet (%d bytes): %v", len(wire), err)
+		}
+		if flags == nil {
+			if !bytes.Equal(wire, []byte(raw)) {
+				t.Fatal("preview rewrote original bytes")
+			}
+			continue
+		}
+		for _, op := range []string{"openCopy", "stageReference"} {
+			encoded, err := adapter.EncodeRequest(adapter.Request{Op: op, OperationID: "fixture", Packet: got})
+			if err != nil {
+				t.Fatal(err)
+			}
+			decoded, err := adapter.DecodeRequest(encoded)
+			if err != nil || !slices.Equal(decoded.Packet.Items, items[:3]) {
+				t.Fatalf("%s lost fixture items: %v", op, err)
+			}
+		}
 	}
 }

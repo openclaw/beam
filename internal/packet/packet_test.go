@@ -218,3 +218,30 @@ func TestReusableDecoderAndLiteralRendering(t *testing.T) {
 		t.Fatal("untrusted packet influenced terminal rendering")
 	}
 }
+
+func TestMarshalCompactBudgetPreservesExistingBytesAndLimit(t *testing.T) {
+	raw, err := os.ReadFile("../../conformance/packet/example.beam.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Items = []Item{{Type: "other", Text: "A < B & C > D \u2028"}}
+	before, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := Marshal(p)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("previously valid encoding changed", err)
+	}
+	p.Items = nil
+	for range 10 {
+		p.Items = append(p.Items, Item{Type: "other", Text: strings.Repeat("<", 6000)})
+	}
+	if _, err := Marshal(p); err == nil {
+		t.Fatal("accepted a packet over the compact byte limit")
+	}
+}

@@ -71,11 +71,22 @@ func EncodeRequest(r Request) ([]byte, error) {
 		}
 		w.Packet = b
 	}
-	raw, err := json.Marshal(w)
-	if err != nil {
-		return nil, err
+	env := struct {
+		Protocol int         `json:"protocol"`
+		Request  wireRequest `json:"request"`
+	}{Protocol, w}
+	if bytes.ContainsAny(w.Packet, "<>&\u2028\u2029") {
+		// An otherwise oversized packet used compact JSON. Re-escaping its raw
+		// member in the envelope would make the receiving adapter reject it.
+		var b bytes.Buffer
+		enc := json.NewEncoder(&b)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(env); err != nil {
+			return nil, err
+		}
+		return bytes.TrimSuffix(b.Bytes(), []byte{'\n'}), nil
 	}
-	return json.Marshal(requestEnvelope{Protocol: Protocol, Request: raw})
+	return json.Marshal(env)
 }
 
 func DecodeRequest(data []byte) (Request, error) {
