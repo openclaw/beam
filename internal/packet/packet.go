@@ -89,8 +89,13 @@ func wireSpace(r rune) bool {
 	return r == '\ufeff' || (r != '\u0085' && unicode.IsSpace(r))
 }
 
+// IsBlank follows the packet schema's ECMAScript whitespace definition.
+func IsBlank(s string) bool {
+	return strings.TrimFunc(s, wireSpace) == ""
+}
+
 func validText(s string, limit int) bool {
-	return utf8.ValidString(s) && strings.TrimFunc(s, wireSpace) != "" && Clip(s, limit) == s
+	return utf8.ValidString(s) && !IsBlank(s) && Clip(s, limit) == s
 }
 
 func (p Packet) Validate() error {
@@ -145,16 +150,23 @@ var compactEscapes = strings.NewReplacer(
 	`\u2028`, "\u2028", `\u2029`, "\u2029",
 )
 
+// ErrTooLarge means even the compact wire encoding exceeds MaxBytes.
+var ErrTooLarge = errors.New("packet exceeds 56 KiB")
+
 func Marshal(p Packet) ([]byte, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
-	b, err := json.Marshal(p)
+	return marshalBounded(p, ErrTooLarge)
+}
+
+func marshalBounded(value any, sizeError error) ([]byte, error) {
+	b, err := json.Marshal(value)
 	if len(b) > MaxBytes {
 		// Keep every previously valid encoding byte-identical for reviewed digests.
 		b = []byte(compactEscapes.Replace(string(b)))
 		if len(b) > MaxBytes {
-			return nil, errors.New("packet exceeds 56 KiB")
+			return nil, sizeError
 		}
 	}
 	return b, err

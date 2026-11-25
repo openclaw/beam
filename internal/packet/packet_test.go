@@ -245,3 +245,31 @@ func TestMarshalCompactBudgetPreservesExistingBytesAndLimit(t *testing.T) {
 		t.Fatal("accepted a packet over the compact byte limit")
 	}
 }
+
+func TestV1ProjectionFitsPortableEscapes(t *testing.T) {
+	p, err := Parse([]byte(example))
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := Item{Type: "userMessage", Text: strings.Repeat("&", MaxItemChars), Speaker: "p1"}
+	p.Items = []Item{item, item, item}
+	raw, err := V1Projection(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := ImportV1(raw)
+	if err != nil || len(restored.Items) != len(p.Items) || len(raw) > MaxBytes {
+		t.Fatal("invalid bounded v1 projection", err)
+	}
+	for _, got := range restored.Items {
+		if got.Text != item.Text || got.Speaker != "" {
+			t.Fatal("v1 projection changed text or retained a speaker")
+		}
+	}
+	for len(p.Items) < 10 {
+		p.Items = append(p.Items, item)
+	}
+	if _, err := V1Projection(p); err == nil {
+		t.Fatal("accepted genuinely oversized v1 projection")
+	}
+}
