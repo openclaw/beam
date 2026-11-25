@@ -51,7 +51,6 @@ p { line-height: 1.58; color: var(--muted); }
 .marks { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); list-style: none; gap: .35rem; margin: 0; padding: 0; }
 .marks li { min-width: 0; display: flex; gap: .38rem; align-items: center; background: #fff; border: 1px solid #d7dacb; border-radius: .28rem; padding: .31rem .38rem; min-height: 2.28rem; font-size: .77rem; line-height: 1.13; font-weight: 570; }
 .marks img { flex: none; width: 1.45rem; height: 1.45rem; }
-.wordmark { margin-inline: auto; font: bold .9rem/1.1 var(--mono); letter-spacing: -.05em; }
 .file-input { margin-top: .85rem; font-size: .83rem; }
 .outputs { position: relative; background: #253024; color: #faf8ed; }
 .target { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .65rem; background: #ff9766; color: #271e16; margin-block: 1rem 1.3rem; padding: .85rem; border-radius: .34rem; text-decoration: none; }
@@ -63,6 +62,9 @@ p { line-height: 1.58; color: var(--muted); }
 .outputs dl { margin: .55rem 0 0; }
 .outputs dt { color: #cbd4c2; margin-top: .6rem; font-size: .69rem; }
 .outputs dd { margin: .12rem 0 0; font-size: .88rem; }
+.destinations { display: flex; flex-wrap: wrap; gap: .3rem .75rem; }
+.destinations span { display: inline-flex; align-items: center; gap: .32rem; }
+.destinations img { border-radius: .2rem; }
 .receipt { font-size: .94rem; margin-top: .7rem; }
 .section { display: grid; grid-template-columns: minmax(0, .82fr) minmax(0, 1.4fr); gap: clamp(2rem, 6vw, 7rem); padding-block: clamp(2.5rem, 5vw, 4.6rem); border-top: 1px solid var(--line); scroll-margin-top: 1.2rem; }
 .section-heading h2 { font-size: clamp(2rem, 3.35vw, 3.45rem); font-weight: 570; letter-spacing: -.064em; line-height: 1.08; }

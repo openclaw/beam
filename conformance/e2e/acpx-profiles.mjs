@@ -1,7 +1,7 @@
 // Exercise Beam's installed acpx bridge. Only the ACP peer is a fixture.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -19,7 +19,16 @@ const registry = createRequire(await realpath(acpx)).resolve("acpx/agent-registr
 const { listBuiltInAgents } = await import(pathToFileURL(registry));
 const profiles = listBuiltInAgents().sort();
 const site = await readFile(new URL("../../site/index.html", import.meta.url), "utf8");
-assert.deepEqual([...site.matchAll(/data-profile="([a-z0-9-]+)"/g)].map(m => m[1]).sort(), profiles);
+const readme = await readFile(new URL("../../README.md", import.meta.url), "utf8");
+const table = readme.split("</table>", 1)[0];
+const cards = [...site.matchAll(/<li data-profile="([a-z0-9-]+)">([\s\S]*?)<\/li>/g)];
+assert.deepEqual(cards.map(card => card[1]).sort(), profiles);
+assert.deepEqual([...table.matchAll(/src="site\/marks\/([a-z0-9-]+)\.png"/g)].map(img => img[1]).sort(), profiles);
+for (const [, profile, contents] of cards) {
+  const mark = `marks/${profile}.png`;
+  assert.ok(contents.includes(`src="${mark}"`), `Missing homepage mark for ${profile}`);
+  await access(new URL(`../../site/${mark}`, import.meta.url));
+}
 const peer = fileURLToPath(new URL("../../internal/adapters/acp/testdata/agent.mjs", import.meta.url));
 const root = await realpath(await mkdtemp(path.join(tmpdir(), "beam-acpx-")));
 const version = (await exec(acpx, ["--version"], { cwd: root, env: { HOME: root, PATH: process.env.PATH } })).stdout.trim();
