@@ -303,46 +303,40 @@ beam bundle preview task.beam.zip --out task.html</pre>
           <p class="section-lede">Each version was exercised with synthetic conversations. Run <code>beam doctor --json</code> to see what your installation supports.</p>
         </div>
         <div class="window">
-          <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">direct adapters</h3></div>
-          <div>
-            <div class="row"><p><span class="chip" style="background: var(--c-codex)"><img src="marks/codex.png" alt="" width="20" height="20">Codex</span></p><p class="mono">0.172.0</p><p>Export a thread, or open a new one with the history in model context.</p></div>
-            <div class="row"><p><span class="chip" style="background: var(--c-opencode)"><img src="marks/opencode.png" alt="" width="20" height="20">OpenCode</span></p><p class="mono">1.19.6</p><p>Export a session, or open a new one with the history as one reference message.</p></div>
-            <div class="row"><p><span class="chip" style="background: var(--c-claude)"><img src="marks/claude.png" alt="" width="20" height="20">Claude Code</span></p><p class="mono">2.1.296</p><p>Export selected history, or stage a reference for your first explicit instruction.</p></div>
-            <div class="row"><p><span class="chip" style="background: var(--c-pi)"><img src="marks/pi.png" alt="" width="20" height="20">Pi</span></p><p class="mono">0.83.0</p><p>Export selected history, or stage a reference for your first explicit instruction.</p></div>
-            <div class="row"><p><span class="chip" style="background: var(--c-gemini)"><img src="marks/gemini.png" alt="" width="20" height="20">Gemini CLI</span></p><p class="mono">0.45.0</p><p>Import a staged session file, then finish login in Gemini.</p></div>
-            <div class="row"><p><span class="chip" style="background: var(--c-openclaw)"><img src="marks/openclaw.png" alt="" width="20" height="20">OpenClaw</span></p><p class="mono">2026.11.10</p><p>Export a selected Gateway session, or share a packet with an enabled receiver.</p></div>
-            <div class="row"><p><span class="chip plain" style="background: var(--tb)">Local file</span></p><p class="mono">UTF-8</p><p>Pack selected text, or render Markdown to attach in another tool.</p></div>
-          </div>
-        </div>
-        <div class="window more">
-          <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">through acpx 0.22.0</h3></div>
-          <p style="padding: 18px 18px 0">Use <code>--from acpx:PROFILE</code> in the project where acpx recorded the session. Beam marks these packets partial because acpx keeps a bounded history, and stages a reference you continue in the agent.</p>
-          <ul class="profiles">
-            <li data-profile="cursor"><img src="marks/cursor.png" alt="" width="24" height="24">Cursor</li>
-            <li data-profile="copilot"><img src="marks/copilot.png" alt="" width="24" height="24">GitHub Copilot</li>
-            <li data-profile="goose"><img src="marks/goose.png" alt="" width="24" height="24">Goose</li>
-            <li data-profile="kiro"><img src="marks/kiro.png" alt="" width="24" height="24">Kiro</li>
-            <li data-profile="kimi"><img src="marks/kimi.png" alt="" width="24" height="24">Kimi</li>
-            <li data-profile="qwen"><img src="marks/qwen.png" alt="" width="24" height="24">Qwen Code</li>
-            <li data-profile="antigravity"><img src="marks/antigravity.png" alt="" width="24" height="24">Antigravity</li>
-            <li data-profile="ante"><img src="marks/ante.png" alt="" width="24" height="24">Ante</li>
-            <li data-profile="deepseek-harness"><img src="marks/deepseek-harness.png" alt="" width="24" height="24">DeepSeek Harness</li>
-            <li data-profile="devin"><img src="marks/devin.png" alt="" width="24" height="24">Devin</li>
-            <li data-profile="droid"><img src="marks/droid.png" alt="" width="24" height="24">Factory Droid</li>
-            <li data-profile="fast-agent"><img src="marks/fast-agent.png" alt="" width="24" height="24">fast-agent</li>
-            <li data-profile="fx"><img src="marks/fx.png" alt="" width="24" height="24">fx</li>
-            <li data-profile="grok-build"><img src="marks/grok-build.png" alt="" width="24" height="24">Grok Build</li>
-            <li data-profile="iflow"><img src="marks/iflow.png" alt="" width="24" height="24">iFlow</li>
-            <li data-profile="junie"><img src="marks/junie.png" alt="" width="24" height="24">Junie</li>
-            <li data-profile="kilocode"><img src="marks/kilocode.png" alt="" width="24" height="24">Kilo Code</li>
-            <li data-profile="mcode"><img src="marks/mcode.png" alt="" width="24" height="24">MCode</li>
-            <li data-profile="mux"><img src="marks/mux.png" alt="" width="24" height="24">Mux</li>
-            <li data-profile="octomind"><img src="marks/octomind.png" alt="" width="24" height="24">Octomind</li>
-            <li data-profile="pool"><img src="marks/pool.png" alt="" width="24" height="24">Poolside</li>
-            <li data-profile="qoder"><img src="marks/qoder.png" alt="" width="24" height="24">Qoder</li>
-            <li data-profile="trae"><img src="marks/trae.png" alt="" width="24" height="24">Trae</li>
-            <li data-profile="zeroclaw"><img src="marks/zeroclaw.png" alt="" width="24" height="24">ZeroClaw</li>
+          <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">30 harnesses and counting</h3></div>
+          <ul class="wall">
+            <li data-profile="codex"><img src="marks/codex.png" alt="" width="48" height="48"><span class="ttext"><span class="tname">Codex</span><span class="tmeta">0.172.0, opens a native copy</span></span></li>
+            <li data-profile="opencode"><img src="marks/opencode.png" alt="" width="48" height="48"><span class="ttext"><span class="tname">OpenCode</span><span class="tmeta">1.19.6, opens a native copy</span></span></li>
+            <li data-profile="claude"><img src="marks/claude.png" alt="" width="48" height="48"><span class="ttext"><span class="tname">Claude Code</span><span class="tmeta">2.1.296, stages a reference</span></span></li>
+            <li data-profile="pi"><img src="marks/pi.png" alt="" width="48" height="48"><span class="ttext"><span class="tname">Pi</span><span class="tmeta">0.83.0, stages a reference</span></span></li>
+            <li data-profile="gemini"><img src="marks/gemini.png" alt="" width="48" height="48"><span class="ttext"><span class="tname">Gemini CLI</span><span class="tmeta">0.45.0, stages a session file</span></span></li>
+            <li data-profile="openclaw"><img src="marks/openclaw.png" alt="" width="48" height="48"><span class="ttext"><span class="tname">OpenClaw</span><span class="tmeta">2026.11.10, shares to your Gateway</span></span></li>
+            <li data-profile="cursor"><img src="marks/cursor.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Cursor</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="copilot"><img src="marks/copilot.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">GitHub Copilot</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="goose"><img src="marks/goose.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Goose</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="kiro"><img src="marks/kiro.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Kiro</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="kimi"><img src="marks/kimi.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Kimi</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="qwen"><img src="marks/qwen.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Qwen Code</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="antigravity"><img src="marks/antigravity.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Antigravity</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="ante"><img src="marks/ante.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Ante</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="deepseek-harness"><img src="marks/deepseek-harness.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">DeepSeek Harness</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="devin"><img src="marks/devin.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Devin</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="droid"><img src="marks/droid.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Factory Droid</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="fast-agent"><img src="marks/fast-agent.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">fast-agent</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="fx"><img src="marks/fx.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">fx</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="grok-build"><img src="marks/grok-build.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Grok Build</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="iflow"><img src="marks/iflow.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">iFlow</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="junie"><img src="marks/junie.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Junie</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="kilocode"><img src="marks/kilocode.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Kilo Code</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="mcode"><img src="marks/mcode.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">MCode</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="mux"><img src="marks/mux.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Mux</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="octomind"><img src="marks/octomind.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Octomind</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="pool"><img src="marks/pool.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Poolside</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="qoder"><img src="marks/qoder.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Qoder</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="trae"><img src="marks/trae.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">Trae</span><span class="tmeta">via acpx</span></span></li>
+            <li data-profile="zeroclaw"><img src="marks/zeroclaw.png" alt="" width="40" height="40"><span class="ttext"><span class="tname">ZeroClaw</span><span class="tmeta">via acpx</span></span></li>
           </ul>
+          <p class="wall-note">Coloured tiles are direct adapters, tested at the version shown. The rest connect through acpx 0.22.0: use <code>--from acpx:PROFILE</code> in the project where acpx recorded the session. Beam marks those packets partial and stages a reference you continue in the agent. Text files and stdin work too.</p>
         </div>
         <details class="more">
           <summary>Tested versions and fixture results</summary>
