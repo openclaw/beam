@@ -3,79 +3,125 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f4ed">
-  <meta name="description" content="Beam is a local CLI for moving reviewed conversation history between coding agents.">
-  <title>Beam · Portable coding conversations</title>
+  <meta name="theme-color" content="#f8f6ef">
+  <meta name="description" content="Move a reviewed conversation from one coding agent to another. Beam cleans the history locally and packages the messages you choose.">
+  <meta property="og:title" content="Beam · Conversation handoffs for coding agents">
+  <meta property="og:description" content="Pack a session, inspect its messages, and open a copy in another agent.">
+  <meta property="og:image" content="https://openclaw.github.io/beam/beam-cover.webp">
+  <title>Beam · Conversation handoffs for coding agents</title>
   <link rel="stylesheet" href="beam.css">
 </head>
-<body>
-  <header>
-    <a class="wordmark" href="#top">Beam</a>
+<body id="top">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead wrap">
+    <a class="brand" href="#top" aria-label="Beam home"><span class="brand-mark" aria-hidden="true"></span>Beam</a>
     <nav aria-label="Project">
-      <a href="#usage">Usage</a>
-      <a href="#support">Support</a>
-      <a href="https://github.com/openclaw/beam">GitHub ↗</a>
+      <a href="#usage">Quickstart</a>
+      <a href="#support">Harnesses</a>
+      <a class="repo" href="https://github.com/openclaw/beam">GitHub <span aria-hidden="true">↗</span></a>
     </nav>
   </header>
-  <main id="top">
-    <section class="intro" aria-labelledby="title">
-      <h1 id="title">Take your conversation to another coding agent.</h1>
-      <p>Beam lets you choose a session, clean its history locally, and review the exact packet that goes to the next harness.</p>
-      <a class="button" href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download Beam 0.1.0 <span aria-hidden="true">↗</span></a>
-    </section>
-    <section class="example" aria-label="Synthetic cleaning example">
-      <div class="sample">
-        <h2>Source conversation</h2>
-        <dl><dt>User</dt><dd>Send the CSV fix to <mark>alex@example.test</mark>.</dd>
-        <dt>Agent</dt><dd>The parser now preserves quoted newlines.</dd></dl>
+  <main id="main" tabindex="-1">
+    <section class="hero wrap" aria-labelledby="title">
+      <div class="hero-copy">
+        <h1 id="title">Hand off a<br><em>conversation.</em></h1>
+        <p>Move the history of a coding session from one agent to another. Beam cleans the messages locally so you can read exactly what you’re sharing.</p>
+        <div class="actions">
+          <a class="button" href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download v0.1.0 <span aria-hidden="true">↗</span></a>
+          <a class="text-action" href="#usage">Try Beam <span aria-hidden="true">↓</span></a>
+        </div>
       </div>
-      <div class="sample clean">
-        <h2>Reviewed packet</h2>
-        <dl><dt>User</dt><dd>Send the CSV fix to <strong>[REDACTED_EMAIL]</strong>.</dd>
-        <dt>Agent</dt><dd>The parser now preserves quoted newlines.</dd></dl>
-      </div>
+      <figure class="handoff">
+        <div class="optics" aria-hidden="true"></div>
+        <figcaption><span>Codex</span><span aria-hidden="true">→</span><code>task.beam.json</code><span aria-hidden="true">→</span><span>OpenCode</span></figcaption>
+      </figure>
     </section>
-    <section class="use" id="usage" aria-labelledby="usage-title">
-      <div><h2 id="usage-title">Install the CLI</h2><p>Extract the executable from the macOS, Linux or Windows archive for your processor. Put it on your <code>PATH</code>, then check the adapters on this machine.</p></div>
-      <pre><code>beam --version
-beam doctor --json</code></pre>
-      <div><h3>Move a session</h3><p>Choose a Codex session in the source project. Review its cleaned bytes, then open them in OpenCode.</p></div>
-      <pre><code>beam list --from codex
-beam pack --from codex --session "$SESSION_ID" --out task.beam.json
+
+    <section class="section workflow wrap" id="usage" aria-labelledby="usage-title">
+      <div class="section-heading">
+        <h2 id="usage-title">Your first handoff</h2>
+        <p>Extract <code>beam</code> from the archive for macOS, Linux, or Windows and put it on your <code>PATH</code>. On Windows, the executable is <code>beam.exe</code>.</p>
+        <p>In your source project, run <code>beam list --from codex</code>. Replace <code>SESSION_ID</code> with the ID you choose.</p>
+      </div>
+      <div>
+        <div class="terminal">
+          <div class="terminal-head"><span>Codex → OpenCode</span><span>Shell</span></div>
+          <pre><code><span class="comment"># Export the selected messages</span>
+beam pack --from codex --session SESSION_ID \
+  --out task.beam.json
+
+<span class="comment"># Read the packet and its digest</span>
 beam inspect task.beam.json
+
+<span class="comment"># Open an independent session</span>
 beam open task.beam.json --in opencode</code></pre>
-      <div><h3>Connect OpenClaw</h3><p>The v2 receiver is available on OpenClaw main from <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">7071b82</a>. The tagged OpenClaw 2026.11.8 provides the v1 endpoint. Enable Beam and restart the Gateway.</p></div>
-      <pre><code>openclaw plugins enable beam
-openclaw gateway restart</code></pre>
-      <div><h3>Share a reviewed packet</h3><p>On your machine, use the Gateway’s URL. Add <code>--cloudflare-login</code> for Cloudflare Access with the installed <code>cloudflared</code> helper. Supply a separate Gateway bearer through <code>BEAM_AUTH_TOKEN</code> when required.</p></div>
-      <pre><code>beam share task.beam.json --to https://gateway.example \
-  --cloudflare-login</code></pre>
+        </div>
+        <details class="inline-details"><summary>Try it with a file instead</summary>
+          <p>These commands use only Beam and a POSIX shell.</p>
+          <pre><code>printf '%s\n' 'Keep quoted newlines in the CSV parser.' |
+  beam pack --from file --session - --out sample.beam.json
+beam render sample.beam.json</code></pre>
+        </details>
+      </div>
     </section>
-    <section id="support" aria-labelledby="support-title">
-      <h2 id="support-title">Harness support</h2>
-      <p>Check <code>beam doctor --json</code> for the operations available on your machine. These versions have been exercised with synthetic conversations.</p>
-      <table>
-        <thead><tr><th scope="col">Harness</th><th scope="col">Verified behavior</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Codex 0.172.0 and OpenCode 1.19.6</th><td>Export a selected session, copy it in either direction and reopen it. Sending a new instruction is a separate operation.</td></tr>
-          <tr><th scope="row">Claude Code 2.1.296 and Pi 0.83.0</th><td>Stage a reference without starting a model turn. After an explicit prompt, Beam read the question and answer from the new native session.</td></tr>
-          <tr><th scope="row">Gemini CLI 0.45.0</th><td>Load a staged session file, then complete login in Gemini. The CLI assigned a new session ID before login.</td></tr>
-          <tr><th scope="row">acpx 0.22.0</th><td>Read a selected ACP session and stage a reference. Continue manually in the target agent. Bound sends require an acpx version that can verify the selected record.</td></tr>
-          <tr><th scope="row">OpenClaw 2026.6.11</th><td>Export the selected session through an authenticated Gateway. The wrong-token profile was denied. History without completeness evidence is marked truncated.</td></tr>
-          <tr><th scope="row">OpenClaw main receiver</th><td>A guest opened private Beam links and continued once in Chromium. Disabling Beam cleared the transcript and removed the route on the same connection. In a separate retry test, the original send and two retries produced one model turn in total. <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#qualification-on-openclaw-main">Installed Gateway tests ↗</a></td></tr>
-          <tr><th scope="row">OpenClaw with the Codex plugin</th><td>Two installed Gateway builds mirrored a selected native Codex 0.169.0 session on Linux. The publisher rotated credentials and resumed updates. A teammate could read the session, and releasing it stopped future updates. The source Gateway needs the separately installed <code>@openclaw/codex</code> plugin. The receiver only needs Beam enabled. <a href="https://github.com/openclaw/beam/blob/602ac10dfcd9c0595196f58893f62bba1430a24f/conformance/e2e/codex_mirror_test.go">Integration test ↗</a></td></tr>
-          <tr><th scope="row">Local file</th><td>Read a selected UTF-8 file or render a Markdown reference for manual import.</td></tr>
-        </tbody>
-      </table>
-      <!-- adapter fixture results -->
-      <div class="links">
-        <a href="https://github.com/openclaw/beam/releases">Releases ↗</a>
-        <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md">Protocol design ↗</a>
-        <a href="https://github.com/openclaw/beam/blob/main/schema/packet-v2.schema.json">Packet schema ↗</a>
-        <a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill ↗</a>
+
+    <section class="section privacy wrap" aria-labelledby="privacy-title">
+      <div class="section-heading">
+        <h2 id="privacy-title">What travels</h2>
+        <p>The packet carries visible messages. Your workspace, tools, and credentials stay with their agent. The cleaner looks for common secrets, email addresses, and local paths. Read the result before you send it.</p>
+      </div>
+      <div class="comparison" aria-label="Example email redaction">
+        <div><h3>Source message</h3><p>Send the CSV fix to <mark>alex@example.test</mark>.</p></div>
+        <div><h3>In the packet</h3><p>Send the CSV fix to <strong>[REDACTED_EMAIL]</strong>.</p></div>
+      </div>
+    </section>
+
+    <section class="section wrap support" id="support" aria-labelledby="support-title">
+      <div class="section-heading">
+        <h2 id="support-title">Harness support</h2>
+        <p>Opening a copy or staging a reference starts zero model turns. Give the destination a new instruction when you want a reply. Run <code>beam doctor --json</code> to check your installation.</p>
+      </div>
+      <div>
+        <table class="harness-table"><thead><tr><th scope="col">Harness</th><th scope="col">What you can do</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Codex</th><td>Export a thread or open a new one with the packet in model context. Earlier turns do not appear individually in the UI.</td></tr>
+            <tr><th scope="row">OpenCode</th><td>Export a session or open a new one with the history in a single reference message.</td></tr>
+            <tr><th scope="row">Claude Code · Pi</th><td>Export selected history or stage a reference for the first explicit instruction.</td></tr>
+            <tr><th scope="row">Gemini CLI</th><td>Import a staged session file, then finish login in Gemini.</td></tr>
+            <tr><th scope="row">acpx 0.22.0</th><td>Read a selected ACP session and stage a reference. Continue manually in the target agent.</td></tr>
+            <tr><th scope="row">OpenClaw</th><td>Export a selected Gateway session or share a packet with an enabled receiver. The Gateway checks each caller’s access.</td></tr>
+            <tr><th scope="row">Local file</th><td>Pack selected text or render Markdown to attach in another tool.</td></tr>
+          </tbody>
+        </table>
+        <details class="inline-details"><summary>Tested versions and fixture results</summary>
+          <p>The <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#out-of-box-harness-coverage">versioned harness tests</a> cover native copies, staged references, and manual imports. The <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#qualification-on-openclaw-main">Gateway tests</a> cover private links, credential rotation, restart, and release.</p>
+          <!-- adapter fixture results -->
+        </details>
+      </div>
+    </section>
+
+    <section class="section wrap connect" aria-labelledby="gateway-title">
+      <div class="section-heading">
+        <h2 id="gateway-title">Connect OpenClaw</h2>
+        <p>Enable Beam on the receiving Gateway. For a v2 receiver, share the file using your Gateway URL and its bearer credential in <code>BEAM_AUTH_TOKEN</code>.</p>
+        <a class="text-action" href="https://docs.openclaw.ai/plugins/beam">OpenClaw setup <span aria-hidden="true">↗</span></a>
+      </div>
+      <div>
+        <pre class="plain-code"><code><span class="comment"># On the receiving Gateway</span>
+openclaw plugins enable beam
+openclaw gateway restart
+
+<span class="comment"># On the machine holding the packet</span>
+beam share task.beam.json --to https://gateway.example</code></pre>
+        <details class="inline-details"><summary>Cloudflare Access and receiver versions</summary>
+          <p>Add <code>--cloudflare-login</code> to sign in through <code>cloudflared</code>. The Gateway still checks its own credential. The <a href="https://github.com/openclaw/beam#share-with-openclaw">README</a> covers service tokens and existing Access tokens.</p>
+          <p>OpenClaw 2026.11.8 serves v1. The v2 receiver is on <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">OpenClaw main from 7071b82</a>. For a v1 receiver, <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#operator-experience">prepare and review a v1 projection</a> before sharing.</p>
+        </details>
       </div>
     </section>
   </main>
-  <footer><span>Beam</span><a href="https://github.com/openclaw/beam/blob/main/LICENSE">MIT license</a></footer>
+  <footer class="wrap"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span>Beam</a>
+    <nav aria-label="Resources"><a href="https://github.com/openclaw/beam#on-the-main-branch">Tools on main</a><a href="https://github.com/openclaw/beam/tree/main/schema">Schemas</a><a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill</a><a href="https://github.com/openclaw/beam/blob/main/LICENSE">MIT</a></nav>
+  </footer>
 </body>
 </html>
