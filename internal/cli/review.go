@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -17,7 +16,7 @@ func review(p packet.Packet, raw []byte, o options, out io.Writer) (any, error) 
 			return nil, fmt.Errorf("choose --keep or --omit to write an edited packet")
 		}
 		if o.values["json"] != "" {
-			return map[string]any{"digest": digest, "bytes": len(raw), "packet": json.RawMessage(raw)}, nil
+			return nil, writePacketReceipt(out, raw, map[string]any{"digest": digest, "bytes": len(raw)})
 		}
 		if _, err := fmt.Fprintf(out, "%s  %d bytes\n%q  source=%q  id=%q  updated=%s  completed=%t  truncated=%t\n", digest, len(raw), p.Title, p.Source, p.BeamID, p.UpdatedAt, p.Completed, p.Truncated); err != nil {
 			return nil, err
@@ -72,17 +71,15 @@ func review(p packet.Packet, raw []byte, o options, out io.Writer) (any, error) 
 		}
 	}
 	path := o.values["out"]
-	receipt := map[string]any{"sourceDigest": digest, "digest": packet.Digest(edited), "items": len(items)}
+	editedDigest := packet.Digest(edited)
 	if path == "-" && o.values["json"] != "" {
-		receipt["packet"] = json.RawMessage(edited)
-	} else {
-		if err := save(path, edited, out); err != nil {
-			return nil, err
-		}
-		if path == "-" {
-			return nil, nil
-		}
-		receipt["path"] = path
+		return nil, writePacketReceipt(out, edited, map[string]any{"sourceDigest": digest, "digest": editedDigest, "items": len(items)})
 	}
-	return receipt, nil
+	if err := save(path, edited, out); err != nil {
+		return nil, err
+	}
+	if path == "-" {
+		return nil, nil
+	}
+	return map[string]any{"sourceDigest": digest, "digest": editedDigest, "items": len(items), "path": path}, nil
 }

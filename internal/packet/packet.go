@@ -136,13 +136,26 @@ func Parse(data []byte) (Packet, error) {
 	return p, nil
 }
 
+// Go escapes these characters for HTML and JavaScript embedding. Standalone
+// JSON permits their UTF-8 spellings. Consume escaped backslashes in pairs
+// so literal text such as \\u0026 is never interpreted as an escape.
+var compactEscapes = strings.NewReplacer(
+	`\\`, `\\`,
+	`\u0026`, "&", `\u003c`, "<", `\u003e`, ">",
+	`\u2028`, "\u2028", `\u2029`, "\u2029",
+)
+
 func Marshal(p Packet) ([]byte, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
 	b, err := json.Marshal(p)
 	if len(b) > MaxBytes {
-		return nil, errors.New("packet exceeds 56 KiB")
+		// Keep every previously valid encoding byte-identical for reviewed digests.
+		b = []byte(compactEscapes.Replace(string(b)))
+		if len(b) > MaxBytes {
+			return nil, errors.New("packet exceeds 56 KiB")
+		}
 	}
 	return b, err
 }
