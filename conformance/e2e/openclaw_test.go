@@ -187,6 +187,20 @@ func TestOpenClawScreenshotShare(t *testing.T) {
 	read(b, "/snapshot", nil)
 	read(b, "/image", nil)
 	read(a, "/image", picture.Bytes())
+	var plain struct{ APIURL, Digest, PresentationDigest string }
+	machineResult(t, c.run(t, nil, "share", "reviewed.beam.json", "--to", a.URL, "--state", "publisher.sqlite", "--json"), &plain)
+	if plain.APIURL != pub.APIURL || plain.Digest != pub.Digest || plain.PresentationDigest != "" {
+		t.Fatal("text-only replacement changed the publication or retained the image")
+	}
+	read(a, "/snapshot", packet)
+	res, err := a.Client().Get(a.URL + resource.EscapedPath() + "/image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("removed image returned %d", res.StatusCode)
+	}
 	if len(models.seen()) != 0 {
 		t.Fatal("reading a shared screenshot started a model turn")
 	}

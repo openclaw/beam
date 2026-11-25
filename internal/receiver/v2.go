@@ -135,9 +135,9 @@ func (c *Client) Share(ctx context.Context, data []byte) (Publication, error) {
 	if err != nil {
 		return Publication{}, err
 	}
-	return c.share(ctx, caps, data)
+	return c.sharePacket(ctx, caps, data, false)
 }
-func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Publication, error) {
+func (c *Client) sharePacket(ctx context.Context, caps Capabilities, data []byte, preservePreviewOnHandoff bool) (Publication, error) {
 	if err := require(caps, "publish"); err != nil {
 		return Publication{}, err
 	}
@@ -148,10 +148,10 @@ func (c *Client) share(ctx context.Context, caps Capabilities, data []byte) (Pub
 	if err != nil {
 		return Publication{}, failure("invalid_packet", "never")
 	}
-	return c.publish(ctx, p.BeamID, data, packet.Digest(data), "")
+	return c.publish(ctx, p.BeamID, data, packet.Digest(data), "", preservePreviewOnHandoff)
 }
 
-func (c *Client) publish(ctx context.Context, beamID string, data []byte, digest, presentationDigest string) (Publication, error) {
+func (c *Client) publish(ctx context.Context, beamID string, data []byte, digest, presentationDigest string, preservePreviewOnHandoff bool) (Publication, error) {
 	s, err := c.journal()
 	if err != nil {
 		return Publication{}, err
@@ -175,7 +175,7 @@ func (c *Client) publish(ctx context.Context, beamID string, data []byte, digest
 			if head.State == "released" || head.State == "ready" || head.State == "released_unbound" {
 				return Publication{}, failure("source_retired", "after_reconcile")
 			}
-			if head.State != "legacy_unbound" && head.Digest == digest && (presentationDigest == "" || head.PresentationDigest == presentationDigest) {
+			if head.State != "legacy_unbound" && head.Digest == digest && (preservePreviewOnHandoff || head.PresentationDigest == presentationDigest) {
 				head.Disposition = "unchanged"
 				return head, nil
 			}
@@ -238,7 +238,7 @@ func (c *Client) putSnapshot(ctx context.Context, pending journal.Pending, diges
 		return Publication{}, err
 	}
 	var pub Publication
-	if json.Unmarshal(r.body, &pub) != nil || pub.Digest != digest || (presentationDigest != "" && pub.PresentationDigest != presentationDigest) || !slices.Contains([]string{"applied", "unchanged"}, pub.Disposition) {
+	if json.Unmarshal(r.body, &pub) != nil || pub.Digest != digest || pub.PresentationDigest != presentationDigest || !slices.Contains([]string{"applied", "unchanged"}, pub.Disposition) {
 		return Publication{}, failure("invalid_publish_receipt", "after_reconcile")
 	}
 	if err := c.checkPublication(&pub, pending.Resource, suffix); err != nil {
@@ -279,7 +279,8 @@ func (c *Client) Handoff(ctx context.Context, id string, data []byte) (Release, 
 		if err != nil || p.BeamID != id {
 			return Release{}, failure("selected_snapshot_required", "never")
 		}
-		pub, err := c.share(ctx, caps, data)
+		// Releasing an existing publication preserves its reviewed preview when the packet matches.
+		pub, err := c.sharePacket(ctx, caps, data, true)
 		if err != nil {
 			return Release{}, err
 		}

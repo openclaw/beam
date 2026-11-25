@@ -30,7 +30,7 @@ func TestShareReviewedScreenshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var writes int
+	var writes, removals int
 	var head *Publication
 	supported := false
 	loseReply := true
@@ -50,6 +50,16 @@ func TestShareReviewedScreenshot(t *testing.T) {
 			}
 			json.NewEncoder(w).Encode(head)
 		case v2Path + "/snapshots/" + fixtureID:
+			if r.Header.Get("Content-Type") != screenshotContentType {
+				if head == nil || r.Header.Get("If-Match") != head.Revision {
+					t.Error("text-only replacement needs the current revision")
+				}
+				head.PresentationDigest = ""
+				head.Revision = `"2"`
+				removals++
+				json.NewEncoder(w).Encode(head)
+				return
+			}
 			writes++
 			if r.Method != "PUT" || r.Header.Get("Content-Type") != screenshotContentType || r.Header.Get("If-None-Match") != "*" {
 				t.Errorf("unexpected rich PUT")
@@ -97,4 +107,21 @@ func TestShareReviewedScreenshot(t *testing.T) {
 	if code, err := run(); err != nil || code != 0 || writes != 2 {
 		t.Fatalf("unchanged: %d %v writes=%d", code, err, writes)
 	}
+	client, err := New(Config{Endpoint: srv.URL, StatePath: filepath.Join(dir, "state.sqlite"), HTTPClient: srv.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	caps, err := client.Capabilities(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	retained, err := client.sharePacket(t.Context(), caps, raw, true)
+	if err != nil || retained.PresentationDigest == "" || removals != 0 {
+		t.Fatal("handoff changed the existing preview", err)
+	}
+	result, err := client.Share(t.Context(), raw)
+	if err != nil || result.PresentationDigest != "" || removals != 1 {
+		t.Fatal("text-only share did not remove the screenshot", err)
+	}
+
 }

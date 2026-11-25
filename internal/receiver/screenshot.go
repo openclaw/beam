@@ -59,5 +59,5 @@ func (c *Client) shareScreenshot(ctx context.Context, archive []byte, selectedID
 	}
 	// Bind the display filename as well as the image bytes, independently of the packet digest.
 	identity := packet.Digest(append([]byte(name+"\x00"), data...))
-	return c.publish(ctx, p.BeamID, body, b.Manifest.PacketDigest, identity)
+	return c.publish(ctx, p.BeamID, body, b.Manifest.PacketDigest, identity, false)
 }
