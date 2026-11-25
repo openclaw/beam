@@ -147,3 +147,60 @@ func TestAdapterMatrix(t *testing.T) {
 		}
 	}
 }
+
+// Use the installed OpenCode ACP server for a source turn, then read the record
+// back through Beam. The other profile checks substitute a deterministic peer.
+func TestACPXNativeOpenCode(t *testing.T) {
+	c, model := nativeFixture(t)
+	acpx := os.Getenv("BEAM_TEST_ACPX")
+	if !filepath.IsAbs(acpx) {
+		t.Fatal("set BEAM_TEST_ACPX to the installed acpx executable")
+	}
+	c.env[0] = "PATH=" + filepath.Dir(acpx) + string(os.PathListSeparator) + strings.TrimPrefix(c.env[0], "PATH=")
+	config, err := json.Marshal(map[string]any{"agents": map[string]any{"opencode": map[string]any{"argv": []string{os.Getenv("BEAM_E2E_OPENCODE"), "acp"}}}, "ttl": 1, "defaultPermissions": "deny-all"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(c.dir, ".acpxrc.json"), config, 0600); err != nil {
+		t.Fatal(err)
+	}
+	client := c
+	client.path = acpx
+	var session struct {
+		ID string `json:"acpxRecordId"`
+	}
+	if err := json.Unmarshal(client.run(t, nil, "--format", "json", "opencode", "sessions", "ensure", "--name", "csv"), &session); err != nil || session.ID == "" {
+		t.Fatalf("create acpx:opencode record: %v", err)
+	}
+	defer client.run(t, nil, "--format", "quiet", "opencode", "sessions", "close", "csv")
+	client.run(t, nil, "--format", "quiet", "opencode", "prompt", "-s", "csv", sourceMarker+" Contact "+emailMarker+".")
+	before := len(model.seen())
+	if before == 0 {
+		t.Fatal("the explicit OpenCode turn did not reach the loopback provider")
+	}
+	var history struct {
+		Source string
+		Items  []struct{ Type, Text string }
+	}
+	var listed struct{ Entries []struct{ Selection string } }
+	if err := json.Unmarshal(c.run(t, nil, "list", "--from", "acpx:opencode"), &listed); err != nil || len(listed.Entries) != 1 || listed.Entries[0].Selection != session.ID {
+		t.Fatal("Beam did not list the selected native ACP record")
+	}
+	raw := c.run(t, nil, "pack", "--from", "acpx:opencode", "--session", session.ID)
+	if err := json.Unmarshal(raw, &history); err != nil {
+		t.Fatal(err)
+	}
+	foundUser, foundReply := false, false
+	for _, item := range history.Items {
+		foundUser = foundUser || item.Type == "userMessage" && strings.Contains(item.Text, sourceMarker+" Contact [REDACTED_EMAIL].")
+		foundReply = foundReply || item.Type == "agentMessage" && strings.Contains(item.Text, "The fixture received your authorized prompt.")
+	}
+	if history.Source != "acpx" || !foundUser || !foundReply || len(model.seen()) != before {
+		t.Fatalf("unexpected OpenCode conversation through acpx: %+v; calls before export=%d, after=%d", history, before, len(model.seen()))
+	}
+	if out := os.Getenv("BEAM_E2E_ACPX_PACKET"); out != "" {
+		if err := os.WriteFile(out, raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

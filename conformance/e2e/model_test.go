@@ -37,6 +37,9 @@ func (s *modelCalls) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	message := map[string]any{"id": "msg_fixture", "type": "message", "role": "assistant", "status": "completed", "content": []map[string]any{{"type": "output_text", "text": "The fixture received your authorized prompt.", "annotations": []string{}}}}
 	for _, event := range []map[string]any{
 		{"type": "response.created", "response": map[string]any{"id": "resp_fixture", "status": "in_progress"}},
+		{"type": "response.output_item.added", "output_index": 0, "item": map[string]any{"id": "msg_fixture", "type": "message", "role": "assistant", "status": "in_progress", "content": []any{}}},
+		{"type": "response.content_part.added", "item_id": "msg_fixture", "output_index": 0, "content_index": 0, "part": map[string]any{"type": "output_text", "text": "", "annotations": []any{}}},
+		{"type": "response.output_text.delta", "item_id": "msg_fixture", "output_index": 0, "content_index": 0, "delta": "The fixture received your authorized prompt."},
 		{"type": "response.output_item.done", "output_index": 0, "item": message},
 		{"type": "response.completed", "response": map[string]any{"id": "resp_fixture", "status": "completed", "output": []any{message}, "usage": map[string]int{"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}},
 	} {
