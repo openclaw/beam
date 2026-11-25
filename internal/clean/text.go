@@ -21,24 +21,19 @@ var wrappers = func() []*regexp.Regexp {
 var (
 	secretFlag = regexp.MustCompile(`(?i)(?:^|\s)--(?:[a-z0-9_-]*(?:token|secret|password|passwd|passphrase|api[_-]?key)[a-z0-9_-]*)\s+\S`)
 
-	secretKey   = regexp.MustCompile(`(?i)(^|[^a-z0-9_-])(--)?["']?([a-z0-9_-]*(token|secret|password|passwd|passphrase|passcode|api[_-]?key|authorization|cookie)[a-z0-9_-]*|pass|(?:db|ssh|pg|mysql|mfa|otp|auth|login|sudo|proxy|app|service|account|user|admin)[_-]?pass(?:[_-](?:b64|file|path|value|secret))?|pgpassfile|database[_-]?url|redis[_-]?url|dsn|session[_-]?id|sid)["']?[ \t]*(:|=|\s+--)`)
-	privateKey  = regexp.MustCompile(`(?is)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)`)
-	asset       = regexp.MustCompile(`(?i)\[Beam asset omitted: (file|image|document|video|audio)(?:[^\]\r\n]*)\]|\[Image(?: #[0-9]+)?: source: [^\]\r\n]*\]`)
-	urlPattern  = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"']+`)
-	datePattern = regexp.MustCompile(`^(?:[0-9]{4}[-./][0-9]{1,2}[-./][0-9]{1,2}|[0-9]{1,2}[-./][0-9]{1,2}[-./][0-9]{4})$`)
-	phone       = regexp.MustCompile(`(?:\+?[0-9][0-9 ().-]{7,}[0-9])`)
-	quotedPath  = regexp.MustCompile(`(?i)(?:"(?:file:/|~/|\.{1,2}[/\\]|/|[a-z]:[/\\]|\\\\)[^"\n]*"|'(?:file:/|~/|\.{1,2}[/\\]|/|[a-z]:[/\\]|\\\\)[^'\n]*')`)
-	localPath   = regexp.MustCompile(`(?im)(^|[\s"{(\[=:,;>])(?:file:/+|~/|\.{1,2}[/\\]|/|[a-z]:[/\\]|\\\\)[^\s<>"'\])},;]+`)
-	rules       = []struct {
-		re *regexp.Regexp
-		to string
-	}{
-		{regexp.MustCompile(`(?i)\b(?:Bearer|Basic)\s+[a-z0-9._~+/=-]{6,}`), "[REDACTED_AUTH]"},
-		{regexp.MustCompile(`\b(?:sk-(?:ant-)?|(?:sk|rk)_(?:live|test)_|whsec_|npm_|glpat-|gh[pousr]_|github_pat_|xox[baprs]-|AIza|AKIA)[A-Za-z0-9_-]{12,}\b`), "[REDACTED_KEY]"},
-		{regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b`), "[REDACTED_TOKEN]"},
-		{regexp.MustCompile(`(?i)\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b`), "[REDACTED_EMAIL]"},
-		{regexp.MustCompile(`\b(?:[a-fA-F0-9]{32,}|[A-Za-z0-9_+/=-]{40,})\b`), "[REDACTED_OPAQUE]"},
-	}
+	secretKey    = regexp.MustCompile(`(?i)(^|[^a-z0-9_-])(--)?["']?([a-z0-9_-]*(token|secret|password|passwd|passphrase|passcode|api[_-]?key|authorization|cookie)[a-z0-9_-]*|pass|(?:db|ssh|pg|mysql|mfa|otp|auth|login|sudo|proxy|app|service|account|user|admin)[_-]?pass(?:[_-](?:b64|file|path|value|secret))?|pgpassfile|database[_-]?url|redis[_-]?url|dsn|session[_-]?id|sid)["']?[ \t]*(:|=|\s+--)`)
+	privateKey   = regexp.MustCompile(`(?is)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)`)
+	asset        = regexp.MustCompile(`(?i)\[Beam asset omitted: (file|image|document|video|audio)(?:[^\]\r\n]*)\]|\[Image(?: #[0-9]+)?: source: [^\]\r\n]*\]`)
+	urlPattern   = regexp.MustCompile(`(?i)\bhttps?://[^\s<>"']+`)
+	datePattern  = regexp.MustCompile(`^(?:[0-9]{4}[-./][0-9]{1,2}[-./][0-9]{1,2}|[0-9]{1,2}[-./][0-9]{1,2}[-./][0-9]{4})$`)
+	phone        = regexp.MustCompile(`(?:\+?[0-9][0-9 ().-]{7,}[0-9])`)
+	quotedPath   = regexp.MustCompile(`(?i)(?:"(?:file:/|~/|\.{1,2}[/\\]|/|[a-z]:[/\\]|\\\\)[^"\n]*"|'(?:file:/|~/|\.{1,2}[/\\]|/|[a-z]:[/\\]|\\\\)[^'\n]*')`)
+	localPath    = regexp.MustCompile(`(?im)(^|[\s"{(\[=:,;>])(?:file:/+|~/|\.{1,2}[/\\]|/|[a-z]:[/\\]|\\\\)[^\s<>"'\])},;]+`)
+	authValue    = regexp.MustCompile(`(?i)\b(?:Bearer|Basic)\s+[a-z0-9._~+/=-]{6,}`)
+	keyToken     = regexp.MustCompile(`\b(?:sk-(?:ant-)?|(?:sk|rk)_(?:live|test)_|whsec_|npm_|glpat-|gh[pousr]_|github_pat_|xox[baprs]-|AIza|AKIA)[A-Za-z0-9_-]{12,}\b`)
+	jwtToken     = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b`)
+	emailAddress = regexp.MustCompile(`(?i)\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b`)
+	opaqueValue  = regexp.MustCompile(`\b(?:[a-fA-F0-9]{32,}|[A-Za-z0-9_+/=-]{40,})\b`)
 )
 
 func cleanText(s string, mask *regexp.Regexp, r *Report) string {
@@ -67,9 +62,13 @@ func cleanText(s string, mask *regexp.Regexp, r *Report) string {
 	}
 	replace(privateKey, "[REDACTED_PRIVATE_KEY]")
 	s = redactLines(s, r)
-	for _, rule := range rules {
-		replace(rule.re, rule.to)
+	replace(authValue, "[REDACTED_AUTH]")
+	replace(keyToken, "[REDACTED_KEY]")
+	replace(jwtToken, "[REDACTED_TOKEN]")
+	if strings.Contains(s, "@") {
+		replace(emailAddress, "[REDACTED_EMAIL]")
 	}
+	replace(opaqueValue, "[REDACTED_OPAQUE]")
 	s = phone.ReplaceAllStringFunc(s, func(v string) string {
 		if datePattern.MatchString(v) {
 			return v
