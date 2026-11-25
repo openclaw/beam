@@ -12,13 +12,15 @@ type options struct {
 	values   map[string]string
 	args     []string
 	adapters []string
+	keep     []int
 	clean    clean.Options
 }
 
 var optionsFor = map[string]string{
 	"capabilities": "json", "doctor": "json adapter profile-dir endpoint", "adapter": "in adapter profile-dir endpoint",
 	"list": "from cursor limit json adapter profile-dir endpoint", "pack": "from session branch out omit redact json adapter profile-dir endpoint",
-	"clean": "protocol omit redact", "inspect": "json", "convert": "packet-version out json", "render": "out",
+	"review": "keep omit expect-digest out json",
+	"clean":  "protocol omit redact", "inspect": "json", "convert": "packet-version out json", "render": "out",
 	"open":    "in message mode operation-id request-id expect-digest json adapter out state",
 	"push":    "from session branch to mode message operation-id request-id expect-digest dry-run omit redact out json adapter state profile-dir endpoint",
 	"resolve": "in handle json adapter", "send": "in handle request-id message json adapter state",
@@ -63,12 +65,16 @@ func parseOptions(cmd string, args []string) (options, error) {
 		switch name {
 		case "adapter":
 			o.adapters = append(o.adapters, value)
-		case "omit":
+		case "keep", "omit":
 			n, err := strconv.Atoi(value)
 			if err != nil || n <= 0 {
-				return o, fmt.Errorf("--omit takes a 1-based item number")
+				return o, fmt.Errorf("--%s takes a 1-based item number", name)
 			}
-			o.clean.OmitItems = append(o.clean.OmitItems, n)
+			if name == "keep" {
+				o.keep = append(o.keep, n)
+			} else {
+				o.clean.OmitItems = append(o.clean.OmitItems, n)
+			}
 		case "redact":
 			o.clean.RedactLiterals = append(o.clean.RedactLiterals, value)
 		default:

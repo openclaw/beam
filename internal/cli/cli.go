@@ -22,6 +22,7 @@ const usage = `Usage: beam COMMAND [options]
   beam pack --from HARNESS --session ID      Write a reviewed packet (--out FILE or stdout)
   beam clean --protocol 1                    Clean one selected history projection from stdin
   beam inspect FILE                          Show exact packet and its digest
+  beam review FILE                           Number visible items; edit with --keep N or --omit N
   beam convert FILE --packet-version 1       Prepare and preview an explicit v1 projection
   beam render FILE [--out FILE]              Render a packet as quoted Markdown
   beam open FILE --in HARNESS                Open an independent copy or reviewed reference
@@ -149,7 +150,7 @@ func hasOption(args []string, prefix string) bool {
 }
 
 func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, in io.Reader, out, stderr io.Writer) (any, error) {
-	withFile := cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
+	withFile := cmd == "review" || cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
 	if withFile && len(o.args) != 1 {
 		return nil, fmt.Errorf("%s requires exactly one file or -", cmd)
 	}
@@ -242,13 +243,16 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 			return nil, err
 		}
 		return open(ctx, dst, p, o)
-	case "inspect", "render", "open", "convert":
+	case "inspect", "review", "render", "open", "convert":
 		p, b, err := inputPacket(o.args[0], in)
 		if err != nil {
 			return nil, err
 		}
 		if err := matchDigest(o.values["expect-digest"], b); err != nil {
 			return nil, err
+		}
+		if cmd == "review" {
+			return review(p, b, o, out)
 		}
 		if cmd == "convert" {
 			var outBytes []byte

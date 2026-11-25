@@ -28,6 +28,13 @@ beam open task.beam.json --in opencode
 
 The last command opens the reviewed file. An explicit new instruction starts the next model turn. Use `beam render task.beam.json` for a Markdown reference you can attach by hand.
 
+On builds from main, `beam review task.beam.json` numbers the visible items starting at 1. To keep a selection, repeat `--keep N`. To drop a selection, repeat `--omit N`. Supply the digest shown by review and inspect the output before delivery.
+
+```sh
+beam review task.beam.json --keep 1 --keep 3 --expect-digest "$digest" --out edited.beam.json
+beam review edited.beam.json
+```
+
 ## Remote authentication
 
 `beam share task.beam.json --to https://gateway.example` publishes a reviewed packet to an enabled receiver. Supply its bearer credential through `BEAM_AUTH_TOKEN`. When the receiver is behind Cloudflare Access, use one of the following.
