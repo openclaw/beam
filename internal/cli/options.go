@@ -9,14 +9,16 @@ import (
 )
 
 type options struct {
-	values   map[string]string
-	args     []string
-	adapters []string
-	keep     []int
-	clean    clean.Options
+	values      map[string]string
+	args        []string
+	adapters    []string
+	attachments []string
+	keep        []int
+	clean       clean.Options
 }
 
 var optionsFor = map[string]string{
+	"bundle create": "attach out expect-digest json", "bundle inspect": "expect-digest json", "bundle preview": "out expect-digest json",
 	"capabilities": "json", "doctor": "json adapter profile-dir endpoint", "adapter": "in adapter profile-dir endpoint",
 	"list": "from cursor limit json adapter profile-dir endpoint", "pack": "from session branch out omit redact json adapter profile-dir endpoint",
 	"adapter test": "in adapter fixture session mode out state json profile-dir endpoint",
@@ -65,6 +67,8 @@ func parseOptions(cmd string, args []string) (options, error) {
 			return o, fmt.Errorf("--%s requires a value", name)
 		}
 		switch name {
+		case "attach":
+			o.attachments = append(o.attachments, value)
 		case "adapter":
 			o.adapters = append(o.adapters, value)
 		case "keep", "omit":

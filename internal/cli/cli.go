@@ -21,6 +21,9 @@ const usage = `Usage: beam COMMAND [options]
   beam list --from HARNESS                   List local, selectable conversations
   beam pack --from HARNESS --session ID      Write a reviewed packet (--out FILE or stdout)
   beam clean --protocol 1                    Clean one selected history projection from stdin
+  beam bundle create PACKET --attach FILE --out ZIP     Add files to a portable bundle
+  beam bundle inspect ZIP                                Verify contents and show file digests
+  beam bundle preview ZIP --out HTML                     Write an offline preview
   beam inspect FILE                          Show exact packet and its digest
   beam review FILE                           Number visible items; edit with --keep N or --omit N
   beam convert FILE --packet-version 1       Prepare and preview an explicit v1 projection
@@ -52,6 +55,9 @@ func (a App) Run(ctx context.Context, args []string, in io.Reader, out, stderr i
 		return 0
 	}
 	cmd, argv := args[0], args[1:]
+	if cmd == "bundle" && len(argv) > 0 {
+		cmd, argv = "bundle "+argv[0], argv[1:]
+	}
 	if cmd == "adapter" && len(argv) > 0 && argv[0] == "test" {
 		cmd, argv = "adapter test", argv[1:]
 	}
@@ -155,7 +161,7 @@ func hasOption(args []string, prefix string) bool {
 }
 
 func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, in io.Reader, out, stderr io.Writer) (any, error) {
-	withFile := cmd == "plan" || cmd == "review" || cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
+	withFile := cmd == "bundle create" || cmd == "bundle inspect" || cmd == "bundle preview" || cmd == "plan" || cmd == "review" || cmd == "inspect" || cmd == "render" || cmd == "open" || cmd == "convert"
 	if withFile && len(o.args) != 1 {
 		return nil, fmt.Errorf("%s requires exactly one file or -", cmd)
 	}
@@ -163,6 +169,8 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		return nil, fmt.Errorf("unexpected positional argument for %s", cmd)
 	}
 	switch cmd {
+	case "bundle create", "bundle inspect", "bundle preview":
+		return bundleCommand(cmd, o, in, out)
 	case "adapter test":
 		if err := o.require("in"); err != nil {
 			return nil, err
@@ -173,7 +181,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		}
 		return testAdapter(ctx, dst, o, in)
 	case "capabilities":
-		info := map[string]any{"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "packetVersions": []int{1, 2}, "adapters": keys(reg)}
+		info := map[string]any{"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "packetVersions": []int{1, 2}, "bundleVersions": []int{1}, "adapters": keys(reg)}
 		if a.Legacy != nil {
 			info["skillProtocols"] = []int{1}
 		}

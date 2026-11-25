@@ -44,6 +44,12 @@ jobs:
           export BEAM_E2E_OPENCLAW="$RUNNER_TEMP/gateway/node_modules/.bin/openclaw"
           go test -count=1 -tags=beam_openclaw ./conformance/e2e -run '^TestACPXToReleasedOpenClaw$'
           python3 scripts/render-matrix.py site
+      - name: Build downloadable rich handoff
+        run: |
+          printf '%s\n' 'Review the cover artwork and the attached note.' | "$RUNNER_TEMP/beam" pack --from file --session - --out "$RUNNER_TEMP/cover.beam.json"
+          printf '%s\n' 'The orange signal passes through a stack of translucent sheets.' > "$RUNNER_TEMP/design-note.txt"
+          "$RUNNER_TEMP/beam" bundle create "$RUNNER_TEMP/cover.beam.json" --attach site/beam-cover.webp --attach "$RUNNER_TEMP/design-note.txt" --out site/example.beam.zip
+          "$RUNNER_TEMP/beam" bundle preview site/example.beam.zip --out site/example.html
       - if: github.event_name != 'pull_request'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - if: github.event_name != 'pull_request'
