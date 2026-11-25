@@ -19,6 +19,7 @@ type options struct {
 var optionsFor = map[string]string{
 	"capabilities": "json", "doctor": "json adapter profile-dir endpoint", "adapter": "in adapter profile-dir endpoint",
 	"list": "from cursor limit json adapter profile-dir endpoint", "pack": "from session branch out omit redact json adapter profile-dir endpoint",
+	"plan":   "in mode expect-digest json adapter",
 	"review": "keep omit expect-digest out json",
 	"clean":  "protocol omit redact", "inspect": "json", "convert": "packet-version out json", "render": "out",
 	"open":    "in message mode operation-id request-id expect-digest json adapter out state",

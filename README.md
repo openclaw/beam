@@ -35,6 +35,8 @@ beam review task.beam.json --keep 1 --keep 3 --expect-digest "$digest" --out edi
 beam review edited.beam.json
 ```
 
+`beam plan edited.beam.json --in opencode --expect-digest "$edited_digest"` probes the selected adapter and reports the planned operation, model and transcript visibility, and explicit send support. Use `--mode native` to require a native session. Unknown visibility means this adapter version lacks published proof. Delivery probes the destination again.
+
 ## Remote authentication
 
 `beam share task.beam.json --to https://gateway.example` publishes a reviewed packet to an enabled receiver. Supply its bearer credential through `BEAM_AUTH_TOKEN`. When the receiver is behind Cloudflare Access, use one of the following.
