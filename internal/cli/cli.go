@@ -241,10 +241,9 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 						return nil, err
 					}
 					result["path"] = dst
-				} else {
-					result["packet"] = p
+					return result, nil
 				}
-				return result, nil
+				return nil, writePacketReceipt(out, b, result)
 			}
 			fmt.Fprintf(stderr, "%s  %d bytes\n", packet.Digest(b), len(b))
 			return nil, save(o.values["out"], b, out)
@@ -297,13 +296,13 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 					}
 					return map[string]any{"path": name, "digest": packet.Digest(outBytes)}, nil
 				}
-				return map[string]any{"packet": json.RawMessage(outBytes), "digest": packet.Digest(outBytes)}, nil
+				return nil, writePacketReceipt(out, outBytes, map[string]any{"digest": packet.Digest(outBytes)})
 			}
 			return nil, save(o.values["out"], outBytes, out)
 		}
 		if cmd == "inspect" {
 			if o.values["json"] != "" {
-				return map[string]any{"digest": packet.Digest(b), "bytes": len(b), "packet": json.RawMessage(b)}, nil
+				return nil, writePacketReceipt(out, b, map[string]any{"digest": packet.Digest(b), "bytes": len(b)})
 			}
 			fmt.Fprintf(stderr, "%s  %d bytes\n", packet.Digest(b), len(b))
 			return nil, save("-", b, out)

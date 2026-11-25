@@ -72,6 +72,18 @@ func loadInput(name string, in io.Reader, max int64) ([]byte, error) {
 	return adapter.ReadBounded(f, max)
 }
 
+// Keep the validated packet literal intact inside the JSON envelope. Feeding
+// RawMessage back through Marshal changes whitespace and HTML-sensitive text,
+// invalidating the digest and sometimes expanding a packet past its byte limit.
+func writePacketReceipt(out io.Writer, raw []byte, fields map[string]any) error {
+	header, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(out, "{\"protocol\":%d,\"ok\":true,\"result\":%s,\"packet\":%s}}\n", adapter.Protocol, header[:len(header)-1], raw)
+	return err
+}
+
 func save(name string, data []byte, out io.Writer) error {
 	if name == "" || name == "-" {
 		_, err := out.Write(data)

@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
-	"github.com/openclaw/beam/internal/adapter"
 	"github.com/openclaw/beam/internal/packet"
 )
 
@@ -18,7 +16,7 @@ func review(p packet.Packet, raw []byte, o options, out io.Writer) (any, error) 
 			return nil, fmt.Errorf("choose --keep or --omit to write an edited packet")
 		}
 		if o.values["json"] != "" {
-			return nil, writeReviewJSON(out, raw, map[string]any{"digest": digest, "bytes": len(raw)})
+			return nil, writePacketReceipt(out, raw, map[string]any{"digest": digest, "bytes": len(raw)})
 		}
 		if _, err := fmt.Fprintf(out, "%s  %d bytes\n%q  source=%q  id=%q  updated=%s  completed=%t  truncated=%t\n", digest, len(raw), p.Title, p.Source, p.BeamID, p.UpdatedAt, p.Completed, p.Truncated); err != nil {
 			return nil, err
@@ -75,7 +73,7 @@ func review(p packet.Packet, raw []byte, o options, out io.Writer) (any, error) 
 	path := o.values["out"]
 	editedDigest := packet.Digest(edited)
 	if path == "-" && o.values["json"] != "" {
-		return nil, writeReviewJSON(out, edited, map[string]any{"sourceDigest": digest, "digest": editedDigest, "items": len(items)})
+		return nil, writePacketReceipt(out, edited, map[string]any{"sourceDigest": digest, "digest": editedDigest, "items": len(items)})
 	}
 	if err := save(path, edited, out); err != nil {
 		return nil, err
@@ -84,16 +82,4 @@ func review(p packet.Packet, raw []byte, o options, out io.Writer) (any, error) 
 		return nil, nil
 	}
 	return map[string]any{"sourceDigest": digest, "digest": editedDigest, "items": len(items), "path": path}, nil
-}
-
-// Keep the validated packet literal intact inside the JSON envelope. Feeding
-// RawMessage back through Marshal changes whitespace and HTML-sensitive text,
-// invalidating the digest and sometimes expanding a packet past its byte limit.
-func writeReviewJSON(out io.Writer, raw []byte, fields map[string]any) error {
-	header, err := json.Marshal(fields)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(out, "{\"protocol\":%d,\"ok\":true,\"result\":%s,\"packet\":%s}}\n", adapter.Protocol, header[:len(header)-1], raw)
-	return err
 }
