@@ -34,7 +34,8 @@ const usage = `Usage: beam COMMAND [options]
   beam resolve --in HARNESS --handle ID      Resolve an existing local reference
   beam lookup --in HARNESS --operation-id ID Query a previous operation
   beam send --in HARNESS --handle ID --message TEXT
-  beam share|handoff FILE --to ENDPOINT      Publish or release a reviewed packet
+  beam share FILE --to ENDPOINT              Publish a reviewed packet or single-PNG bundle
+  beam handoff FILE --to ENDPOINT            Release a reviewed packet
   beam pull LINK --out FILE                  Read an authorized remote snapshot
   beam continue LINK --message TEXT          Send a new instruction at the destination
   beam adapter test --in HARNESS             Verify protocol capabilities and optional fixture operations

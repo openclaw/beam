@@ -6,6 +6,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/png"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -122,5 +125,69 @@ func TestOpenClawPublishReleaseRestart(t *testing.T) {
 	resolve()
 	if dest.State != "ready" || dest.Reference != ref || len(models.seen()) != 1 {
 		t.Fatalf("restart changed bound destination or resent the instruction: %+v", dest)
+	}
+}
+
+func TestOpenClawScreenshotShare(t *testing.T) {
+	c := newCLI(t)
+	models := new(modelCalls)
+	model := httptest.NewServer(models)
+	defer model.Close()
+	g := newGateway(t, c, model.URL)
+	g.enableBeam(t)
+	g.start(t)
+	a := g.proxy(t, "publisher@example.test", "192.0.2.10", nil)
+	b := g.proxy(t, "teammate@example.test", "192.0.2.11", nil)
+	packet := c.reviewed(t)
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 4, 2))); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{"reviewed.beam.json": packet, "diagram.png": picture.Bytes()} {
+		if err := os.WriteFile(filepath.Join(c.dir, name), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.run(t, nil, "bundle", "create", "reviewed.beam.json", "--attach", "diagram.png", "--out", "rich.beam.zip")
+	var pub struct{ APIURL, URL, Digest, PresentationDigest string }
+	machineResult(t, c.run(t, nil, "share", "rich.beam.zip", "--to", a.URL, "--state", "publisher.sqlite", "--json"), &pub)
+	if pub.Digest == "" || pub.PresentationDigest == "" || pub.URL == "" {
+		t.Fatalf("incomplete share receipt: %+v", pub)
+	}
+	resource, err := url.Parse(pub.APIURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(server *httptest.Server, suffix string, want []byte) {
+		t.Helper()
+		res, err := server.Client().Get(server.URL + resource.EscapedPath() + suffix)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		if want == nil {
+			if res.StatusCode != 401 && res.StatusCode != 403 && res.StatusCode != 404 {
+				t.Fatalf("removed reader received %d", res.StatusCode)
+			}
+			return
+		}
+		body, err := io.ReadAll(res.Body)
+		if err != nil || res.StatusCode != 200 || !bytes.Equal(body, want) {
+			t.Fatalf("reader %s returned %d, bytes match=%v, error=%v", suffix, res.StatusCode, bytes.Equal(body, want), err)
+		}
+	}
+	read(b, "/snapshot", packet)
+	read(b, "/image", picture.Bytes())
+	g.stop()
+	g.start(t)
+	read(b, "/image", picture.Bytes())
+	g.stop()
+	g.cli(t, "config", "set", "gateway.auth.trustedProxy.allowUsers", `["publisher@example.test"]`, "--strict-json")
+	g.start(t)
+	read(b, "/snapshot", nil)
+	read(b, "/image", nil)
+	read(a, "/image", picture.Bytes())
+	if len(models.seen()) != 0 {
+		t.Fatal("reading a shared screenshot started a model turn")
 	}
 }

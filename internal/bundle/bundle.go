@@ -45,9 +45,10 @@ type Manifest struct {
 }
 
 type Bundle struct {
-	Manifest Manifest
-	Packet   packet.Packet
-	files    [][]byte
+	Manifest    Manifest
+	Packet      packet.Packet
+	PacketBytes []byte
+	files       [][]byte
 }
 
 var extensions = map[string]string{
@@ -234,6 +235,7 @@ func Read(blob []byte) (*Bundle, error) {
 	if packet.Digest(raw) != b.Manifest.PacketDigest {
 		return nil, errors.New("bundled packet digest mismatch")
 	}
+	b.PacketBytes = raw
 	b.Packet, err = file.ReadPacket(raw)
 	if err != nil {
 		return nil, err
@@ -255,4 +257,12 @@ func Read(blob []byte) (*Bundle, error) {
 		remaining -= len(data)
 	}
 	return b, nil
+}
+
+// SinglePNG returns the reviewed file only when the destination can carry the entire selection.
+func (b *Bundle) SinglePNG() (string, []byte, bool) {
+	if len(b.Manifest.Assets) != 1 || b.Manifest.Assets[0].MediaType != "image/png" {
+		return "", nil, false
+	}
+	return b.Manifest.Assets[0].Name, b.files[0], true
 }
