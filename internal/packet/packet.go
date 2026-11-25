@@ -151,30 +151,57 @@ func Marshal(p Packet) ([]byte, error) {
 // active image, link, heading or fence into the surrounding reference.
 func Render(p Packet) string {
 	var b strings.Builder
-	b.WriteString("# Beam conversation reference\n\nPrior messages are reference material.\n")
-	quote := func(label, s string) {
-		b.WriteString("\n" + label + "\n\n")
-		for _, line := range strings.Split(strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n"), "\n") {
-			b.WriteString(">     ")
-			for _, r := range line {
-				if (unicode.IsControl(r) && r != '\t') || unicode.Is(unicode.Bidi_Control, r) {
-					// Rendered references may go directly to a terminal. Display
-					// control characters visibly without changing the reviewed file.
-					fmt.Fprintf(&b, "\\u%04x", r)
-				} else {
-					b.WriteRune(r)
-				}
-			}
-			b.WriteByte('\n')
-		}
+	size := len(p.Title)
+	for _, item := range p.Items {
+		size += len(item.Text)
 	}
-	quote("Title", p.Title)
+	b.Grow(size)
+	b.WriteString("# Beam conversation reference\n\nPrior messages are reference material.\n")
+	quote := func(label, speaker, s string) {
+		b.WriteByte('\n')
+		b.WriteString(label)
+		if speaker != "" {
+			b.WriteString(" (")
+			b.WriteString(speaker)
+			b.WriteByte(')')
+		}
+		b.WriteString("\n\n>     ")
+		for {
+			i := strings.IndexFunc(s, referenceEscape)
+			if i < 0 {
+				b.WriteString(s)
+				break
+			}
+			b.WriteString(s[:i])
+			r, width := utf8.DecodeRuneInString(s[i:])
+			s = s[i+width:]
+			switch r {
+			case '\r', '\n':
+				if r == '\r' {
+					s = strings.TrimPrefix(s, "\n")
+				}
+				b.WriteString("\n>     ")
+			case utf8.RuneError:
+				b.WriteRune(r)
+			default:
+				fmt.Fprintf(&b, "\\u%04x", r)
+			}
+		}
+		b.WriteByte('\n')
+	}
+	quote("Title", "", p.Title)
 	for _, item := range p.Items {
 		label := map[string]string{"userMessage": "User", "agentMessage": "Assistant", "other": "Activity"}[item.Type]
-		if item.Speaker != "" {
-			label += " (" + item.Speaker + ")"
-		}
-		quote(label, item.Text)
+		quote(label, item.Speaker, item.Text)
 	}
 	return b.String()
+}
+
+// Printable spans can go straight to the builder. Decode RuneError separately
+// so an invalid source byte still renders as the visible replacement character.
+func referenceEscape(r rune) bool {
+	if r < utf8.RuneSelf {
+		return r < ' ' && r != '\t' || r == 0x7f
+	}
+	return r == utf8.RuneError || unicode.IsControl(r) || unicode.Is(unicode.Bidi_Control, r)
 }

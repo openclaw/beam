@@ -123,6 +123,18 @@ func TestDigestAndRender(t *testing.T) {
 	}
 }
 
+func TestRenderLiteralLines(t *testing.T) {
+	p := Packet{Title: "例", Items: []Item{{
+		Type: "userMessage", Speaker: "p2", Text: "\r\nquote\t🦊\r\rnext\u0085\u2069\xff\ufffd\n",
+	}}}
+	want := "# Beam conversation reference\n\nPrior messages are reference material.\n" +
+		"\nTitle\n\n>     例\n" +
+		"\nUser (p2)\n\n>     \n>     quote\t🦊\n>     \n>     next\\u0085\\u2069��\n>     \n"
+	if got := Render(p); got != want {
+		t.Fatalf("Render() = %q, want %q", got, want)
+	}
+}
+
 func TestSharedValidatorVectors(t *testing.T) {
 	raw, err := os.ReadFile("../../conformance/packet/example.beam.json")
 	if err != nil {
