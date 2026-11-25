@@ -16,10 +16,10 @@ Bring a coding conversation into **OpenClaw**. Beam reads the session you select
 <tr><th rowspan="8" scope="rowgroup">acpx</th><td><img src="site/marks/cursor.png" alt="" width="20" height="20"> Cursor</td><td><img src="site/marks/copilot.png" alt="" width="20" height="20"> GitHub Copilot</td><td><img src="site/marks/goose.png" alt="" width="20" height="20"> Goose</td></tr>
 <tr><td><img src="site/marks/kiro.png" alt="" width="20" height="20"> Kiro</td><td><img src="site/marks/kimi.png" alt="" width="20" height="20"> Kimi</td><td><img src="site/marks/qwen.png" alt="" width="20" height="20"> Qwen Code</td></tr>
 <tr><td><img src="site/marks/antigravity.png" alt="" width="20" height="20"> Antigravity</td><td><img src="site/marks/ante.png" alt="" width="20" height="20"> Ante</td><td><img src="site/marks/deepseek-harness.png" alt="" width="20" height="20"> DeepSeek Harness</td></tr>
-<tr><td><img src="site/marks/devin.png" alt="" width="20" height="20"> Devin</td><td><strong>Factory Droid</strong></td><td><img src="site/marks/fast-agent.png" alt="" width="20" height="20"> fast-agent</td></tr>
-<tr><td><strong>fx</strong></td><td><img src="site/marks/grok-build.png" alt="" width="20" height="20"> Grok Build</td><td><strong>iFlow</strong></td></tr>
+<tr><td><img src="site/marks/devin.png" alt="" width="20" height="20"> Devin</td><td><img src="site/marks/droid.png" alt="" width="20" height="20"> Factory Droid</td><td><img src="site/marks/fast-agent.png" alt="" width="20" height="20"> fast-agent</td></tr>
+<tr><td><img src="site/marks/fx.png" alt="" width="20" height="20"> fx</td><td><img src="site/marks/grok-build.png" alt="" width="20" height="20"> Grok Build</td><td><img src="site/marks/iflow.png" alt="" width="20" height="20"> iFlow</td></tr>
 <tr><td><img src="site/marks/junie.png" alt="" width="20" height="20"> Junie</td><td><img src="site/marks/kilocode.png" alt="" width="20" height="20"> Kilo Code</td><td><img src="site/marks/mcode.png" alt="" width="20" height="20"> MCode</td></tr>
-<tr><td><strong>Mux</strong></td><td><img src="site/marks/octomind.png" alt="" width="20" height="20"> Octomind</td><td><img src="site/marks/pool.png" alt="" width="20" height="20"> Poolside</td></tr>
+<tr><td><img src="site/marks/mux.png" alt="" width="20" height="20"> Mux</td><td><img src="site/marks/octomind.png" alt="" width="20" height="20"> Octomind</td><td><img src="site/marks/pool.png" alt="" width="20" height="20"> Poolside</td></tr>
 <tr><td><img src="site/marks/qoder.png" alt="" width="20" height="20"> Qoder</td><td><img src="site/marks/trae.png" alt="" width="20" height="20"> Trae</td><td><img src="site/marks/zeroclaw.png" alt="" width="20" height="20"> ZeroClaw</td></tr>
 </tbody>
 </table>
@@ -98,9 +98,9 @@ Open `task.html` to see the conversation and its media offline. Send the ZIP to 
 
 | Destination | Result |
 | --- | --- |
-| Codex or OpenCode | A new native session containing the reviewed history as a reference. |
-| Claude Code or Pi | A staged reference for the next explicit instruction. |
-| Gemini CLI | A session file to import in Gemini. Gemini handles login. |
+| <img src="site/marks/codex.png" alt="" width="20" height="20"> Codex or <img src="site/marks/opencode.png" alt="" width="20" height="20"> OpenCode | A new native session containing the reviewed history as a reference. |
+| <img src="site/marks/claude.png" alt="" width="20" height="20"> Claude Code or <img src="site/marks/pi.png" alt="" width="20" height="20"> Pi | A staged reference for the next explicit instruction. |
+| <img src="site/marks/gemini.png" alt="" width="20" height="20"> Gemini CLI | A session file to import in Gemini. Gemini handles login. |
 | acpx 0.22.0 | A staged reference to continue manually. |
 | Local file | A Markdown reference to attach in another tool. |
 
