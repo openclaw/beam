@@ -3,181 +3,391 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f8f6ef">
-  <meta name="description" content="Export sessions from coding harnesses to OpenClaw. See direct integrations and 30 acpx profiles, review the cleaned packet, then share it with your team.">
-  <meta property="og:title" content="Beam · Bring coding sessions to OpenClaw">
-  <meta property="og:description" content="Export directly or through acpx, review the messages locally, and share a snapshot with OpenClaw.">
+  <meta name="theme-color" content="#a9d2f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1630" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Beam moves a reviewed coding-agent session from one harness to another: Codex, Claude Code, OpenCode, Gemini CLI, Pi, OpenClaw, and every agent acpx reaches. Open source under the MIT license.">
+  <meta property="og:title" content="Beam · Beam any session to any agent">
+  <meta property="og:description" content="Ask the agent you are in to beam the conversation over. The history is cleaned on your machine and you review it first.">
   <meta property="og:image" content="https://openclaw.github.io/beam/beam-cover.webp">
-  <title>Beam · Bring coding sessions to OpenClaw</title>
+  <title>Beam · Beam any session to any agent</title>
+  <script>try { const t = localStorage.getItem("beam-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Jersey+10&family=VT323&display=swap">
   <link rel="stylesheet" href="beam.css">
+  <script src="beam.js" defer></script>
 </head>
 <body id="top">
   <a class="skip" href="#main">Skip to content</a>
-  <header class="masthead wrap">
-    <a class="brand" href="#top" aria-label="Beam home"><span class="brand-mark" aria-hidden="true"></span>Beam</a>
-    <nav aria-label="Project">
-      <a href="#usage">Quickstart</a>
-      <a href="#support">Harnesses</a>
-      <a class="repo" href="https://github.com/openclaw/beam">GitHub <span aria-hidden="true">↗</span></a>
-    </nav>
-  </header>
-  <main id="main" tabindex="-1">
-    <section class="hero wrap" aria-labelledby="title">
-      <div class="hero-copy">
-        <h1 id="title">Bring your sessions<br>to <em>OpenClaw.</em></h1>
-        <p>Pick a conversation from your coding harness, clean it locally, and share the reviewed messages with your OpenClaw team.</p>
-        <div class="actions"><a class="button" href="#usage">Share to OpenClaw <span aria-hidden="true">↓</span></a>
-          <a class="text-action" href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download v0.1.0 <span aria-hidden="true">↗</span></a></div>
-      </div>
-      <div class="routes" aria-label="Sources and destinations">
-        <div class="inputs">
-          <h2>Read from</h2>
-          <h3>Direct or via acpx</h3>
-          <ul class="marks">
-              <li data-profile="openclaw"><img src="marks/openclaw.png" alt="" width="24" height="24"><span>OpenClaw</span></li>
-              <li data-profile="claude"><img src="marks/claude.png" alt="" width="24" height="24"><span>Claude Code</span></li>
-              <li data-profile="codex"><img src="marks/codex.png" alt="" width="24" height="24"><span>Codex</span></li>
-              <li data-profile="opencode"><img src="marks/opencode.png" alt="" width="24" height="24"><span>OpenCode</span></li>
-              <li data-profile="gemini"><img src="marks/gemini.png" alt="" width="24" height="24"><span>Gemini CLI</span></li>
-              <li data-profile="pi"><img src="marks/pi.png" alt="" width="24" height="24"><span>Pi</span></li>
-          </ul>
-          <h3>Via acpx <span>· sessions saved in this project</span></h3>
-          <ul class="marks">
-              <li data-profile="cursor"><img src="marks/cursor.png" alt="" width="24" height="24"><span>Cursor</span></li>
-              <li data-profile="copilot"><img src="marks/copilot.png" alt="" width="24" height="24"><span>GitHub Copilot</span></li>
-              <li data-profile="goose"><img src="marks/goose.png" alt="" width="24" height="24"><span>Goose</span></li>
-              <li data-profile="kiro"><img src="marks/kiro.png" alt="" width="24" height="24"><span>Kiro</span></li>
-              <li data-profile="kimi"><img src="marks/kimi.png" alt="" width="24" height="24"><span>Kimi</span></li>
-              <li data-profile="qwen"><img src="marks/qwen.png" alt="" width="24" height="24"><span>Qwen Code</span></li>
-              <li data-profile="antigravity"><img src="marks/antigravity.png" alt="" width="24" height="24"><span>Antigravity</span></li>
-              <li data-profile="ante"><img src="marks/ante.png" alt="" width="24" height="24"><span>Ante</span></li>
-              <li data-profile="deepseek-harness"><img src="marks/deepseek-harness.png" alt="" width="24" height="24"><span>DeepSeek Harness</span></li>
-              <li data-profile="devin"><img src="marks/devin.png" alt="" width="24" height="24"><span>Devin</span></li>
-              <li data-profile="droid"><img src="marks/droid.png" alt="" width="24" height="24"><span>Factory Droid</span></li>
-              <li data-profile="fast-agent"><img src="marks/fast-agent.png" alt="" width="24" height="24"><span>fast-agent</span></li>
-              <li data-profile="fx"><img src="marks/fx.png" alt="" width="24" height="24"><span>fx</span></li>
-              <li data-profile="grok-build"><img src="marks/grok-build.png" alt="" width="24" height="24"><span>Grok Build</span></li>
-              <li data-profile="iflow"><img src="marks/iflow.png" alt="" width="24" height="24"><span>iFlow</span></li>
-              <li data-profile="junie"><img src="marks/junie.png" alt="" width="24" height="24"><span>Junie</span></li>
-              <li data-profile="kilocode"><img src="marks/kilocode.png" alt="" width="24" height="24"><span>Kilo Code</span></li>
-              <li data-profile="mcode"><img src="marks/mcode.png" alt="" width="24" height="24"><span>MCode</span></li>
-              <li data-profile="mux"><img src="marks/mux.png" alt="" width="24" height="24"><span>Mux</span></li>
-              <li data-profile="octomind"><img src="marks/octomind.png" alt="" width="24" height="24"><span>Octomind</span></li>
-              <li data-profile="pool"><img src="marks/pool.png" alt="" width="24" height="24"><span>Poolside</span></li>
-              <li data-profile="qoder"><img src="marks/qoder.png" alt="" width="24" height="24"><span>Qoder</span></li>
-              <li data-profile="trae"><img src="marks/trae.png" alt="" width="24" height="24"><span>Trae</span></li>
-              <li data-profile="zeroclaw"><img src="marks/zeroclaw.png" alt="" width="24" height="24"><span>ZeroClaw</span></li>
-          </ul>
-          <p class="file-input">Also accepts a text file, stdin or a Beam packet.</p>
-        </div>
-        <div class="outputs">
-          <h2>Export to</h2>
-          <a class="target" href="#usage"><img src="marks/openclaw.png" width="42" height="42" alt=""><strong>OpenClaw</strong><span>Share a snapshot with your team <b aria-hidden="true">↗</b></span></a>
-          <p class="other-label">Other destinations</p>
-          <dl><dt>Native session</dt><dd class="destinations"><span><img src="marks/codex.png" alt="" width="20" height="20">Codex</span><span><img src="marks/opencode.png" alt="" width="20" height="20">OpenCode</span></dd>
-            <dt>Staged reference</dt><dd class="destinations"><span><img src="marks/claude.png" alt="" width="20" height="20">Claude Code</span><span><img src="marks/pi.png" alt="" width="20" height="20">Pi</span><span>acpx profiles</span></dd>
-            <dt>Session file</dt><dd class="destinations"><span><img src="marks/gemini.png" alt="" width="20" height="20">Gemini CLI</span></dd>
-            <dt>Markdown</dt><dd>Any tool that accepts a file</dd></dl>
-        </div>
-      </div>
-    </section>
+  <div class="wrap">
+    <header class="masthead">
+      <a class="brand" href="#top" aria-label="Beam home"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 10 10" shape-rendering="crispEdges" fill="currentColor"><rect x="0" y="4" width="1" height="2"/><rect x="2" y="4" width="1" height="2"/><rect x="4" y="4" width="5" height="2"/><rect x="6" y="2" width="1" height="6"/><rect x="7" y="3" width="1" height="4"/><rect x="5" y="1" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="9" y="4" width="1" height="2"/></svg>beam</a>
+      <nav aria-label="Project">
+        <a href="#share">Share</a>
+        <a href="#support">Harnesses</a>
+        <a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Skill</a>
+        <a class="github" href="https://github.com/openclaw/beam"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+        <button type="button" class="theme" hidden><svg aria-hidden="true" width="16" height="16" viewBox="0 0 8 8" shape-rendering="crispEdges" fill="currentColor"><rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="0" y="2" width="2" height="4"/><rect x="1" y="6" width="2" height="1"/><rect x="2" y="7" width="4" height="1"/><rect x="5" y="6" width="2" height="1"/><rect x="6" y="5" width="2" height="1"/></svg><span>dark</span></button>
+      </nav>
+    </header>
 
-    <section class="section workflow wrap" id="usage" aria-labelledby="usage-title">
-      <div class="section-heading">
-        <h2 id="usage-title">From OpenCode to OpenClaw</h2>
-        <p>This example uses an OpenCode session saved through acpx 0.22.0. Run the commands in the project where acpx recorded the session. For a direct export from OpenCode, use <code>--from opencode</code> instead.</p>
-        <p>Install <a href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Beam v0.1.0</a> on your PATH. <a href="#gateway-title">Enable the receiving plugin</a> and set <code>BEAM_AUTH_TOKEN</code> to your Gateway bearer before sharing.</p>
-      </div>
-      <div>
-        <div class="terminal">
-          <div class="terminal-head"><span>acpx:opencode → OpenClaw 2026.11.10</span><span>Shell</span></div>
-          <pre><code><span class="comment"># Choose a session from this project</span>
-beam list --from acpx:opencode
-beam pack --from acpx:opencode --session SESSION_ID \
-  --out task.beam.json
+    <main id="main" tabindex="-1">
+      <section class="hero" aria-labelledby="title">
+        <div class="hero-copy">
+          <h1 id="title">Beam any session to any agent.</h1>
+          <p class="lede">Ask the agent you are in to beam the conversation over. The history moves, cleaned on your machine. Your credentials and tools stay where they are.</p>
+          <div>
+            <div class="tabs" role="tablist" aria-label="Install Beam">
+              <button type="button" class="tab" role="tab" id="tab-cli" aria-controls="panel-cli" aria-selected="true">skills.sh</button>
+              <button type="button" class="tab" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="false" tabindex="-1">ask your agent</button>
+            </div>
+            <div class="cmd">
+              <p id="panel-cli" role="tabpanel" aria-labelledby="tab-cli">npx skills add openclaw/beam</p>
+              <p id="panel-agent" class="prompt" role="tabpanel" aria-labelledby="tab-agent" hidden>Set up Beam for me: install the beam CLI from github.com/openclaw/beam/releases/tag/v0.1.0, run beam doctor --json, then npx skills add openclaw/beam. When I ask you to beam a session, follow the Beam skill and show me the packet first.</p>
+              <button type="button" class="copy" aria-live="polite">copy</button>
+            </div>
+          </div>
+          <p class="note">Works with Codex, Claude Code, OpenCode, Gemini CLI, Pi, OpenClaw, and the agents acpx reaches. Open source under the MIT license.</p>
+        </div>
+        <div class="scene">
+<svg class="s-svg s-svgd" viewBox="0 0 900 600" role="img" aria-label="Two app windows. In the left window, Codex, you type: beam this session to Claude Code. The messages lift out one by one, shrink through the Beam tile in the middle, where a private detail drops away, and stack up in the right window, Claude Code, which ends ready for your next instruction. Then another pair of agents takes a turn.">
+<g class="s-glowwrap" aria-hidden="true"><g class="s-glow"><text x="230" y="155" textLength="440" lengthAdjust="spacingAndGlyphs">           ....:.:::.:::.:.. .          </text><text x="230" y="175" textLength="440" lengthAdjust="spacingAndGlyphs">      ....::-:----=-=-=----::::..       </text><text x="230" y="195" textLength="440" lengthAdjust="spacingAndGlyphs">     ..::-:--=-==+=+=+====-=--::::..    </text><text x="230" y="215" textLength="440" lengthAdjust="spacingAndGlyphs">  ..::--=-==++++*+*+*+*+*++=+==--::..   </text><text x="230" y="235" textLength="440" lengthAdjust="spacingAndGlyphs"> ..::--=-==++****#*#*#*#**+*++==--::..  </text><text x="230" y="255" textLength="440" lengthAdjust="spacingAndGlyphs">..::--==++****##%#%%%#%####**++==-=-:.. </text><text x="230" y="275" textLength="440" lengthAdjust="spacingAndGlyphs">.::--==++*+**##%%@%@%@%%%%##**++==--::..</text><text x="230" y="295" textLength="440" lengthAdjust="spacingAndGlyphs">.:--==++****##%%@@@@@@@@@%%##**++==--::.</text><text x="230" y="315" textLength="440" lengthAdjust="spacingAndGlyphs">.::--==++**###%%%@@@@@@@%%##**++==--::..</text><text x="230" y="335" textLength="440" lengthAdjust="spacingAndGlyphs">..::--==++**##%%%%@@@%@%%#%##**++==--::.</text><text x="230" y="355" textLength="440" lengthAdjust="spacingAndGlyphs"> ..::--==++**#*##%#%#%####**+*++==--::..</text><text x="230" y="375" textLength="440" lengthAdjust="spacingAndGlyphs">  ..----==++****#*#####*#**++++==--::.. </text><text x="230" y="395" textLength="440" lengthAdjust="spacingAndGlyphs">   ..::--=-==++++++*+*++++=+==--::::    </text><text x="230" y="415" textLength="440" lengthAdjust="spacingAndGlyphs">    ..::::--=-====+=+=+====----::..     </text><text x="230" y="435" textLength="440" lengthAdjust="spacingAndGlyphs">       ..:.::-:-----------::::..        </text><text x="230" y="455" textLength="440" lengthAdjust="spacingAndGlyphs">          ..:.:.:::::::::.:..           </text></g></g>
+<path class="s-path" d="M370 300H530"/>
 
-<span class="comment"># Prepare and inspect the v1 packet</span>
-beam convert task.beam.json --packet-version 1 --out task.v1.json
+<g class="s-shadow">
+<rect class="s-win" x="20" y="40" width="350" height="520" rx="14"/>
+<rect class="s-win" x="530" y="40" width="350" height="520" rx="14"/>
+</g>
+<path class="s-tbf" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-tbf" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-codex s-on s-k0" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-claude s-on s-k0" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-opencode s-on s-k1" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-codex s-on s-k1" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-acpx s-on s-k2" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-gemini s-on s-k2" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-openclaw s-on s-k3" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-pi s-on s-k3" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-codex s-on s-k4" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-opencode s-on s-k4" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-opencode s-on s-k5" d="M34 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-openclaw s-on s-k5" d="M544 40h322a14 14 0 0 1 14 14v30h-350v-30a14 14 0 0 1 14-14z"/>
+<path class="s-n" d="M40 58h8v8h-8zM54 58h8v8h-8zM68 58h8v8h-8zM550 58h8v8h-8zM564 58h8v8h-8zM578 58h8v8h-8z" style="opacity: .3"/>
+<g text-anchor="end">
+<text class="s-t s-on s-k0" x="352" y="72">Codex</text>
+<text class="s-t s-on s-k1" x="352" y="72">OpenCode</text>
+<text class="s-t s-on s-k2" x="352" y="72">acpx</text>
+<text class="s-t s-on s-k3" x="352" y="72">OpenClaw</text>
+<text class="s-t s-on s-k4" x="352" y="72">Codex</text>
+<text class="s-t s-on s-k5" x="352" y="72">OpenCode</text>
+<text class="s-t s-on s-k0" x="862" y="72">Claude Code</text>
+<text class="s-t s-on s-k1" x="862" y="72">Codex</text>
+<text class="s-t s-on s-k2" x="862" y="72">Gemini CLI</text>
+<text class="s-t s-on s-k3" x="862" y="72">Pi</text>
+<text class="s-t s-on s-k4" x="862" y="72">OpenCode</text>
+<text class="s-t s-on s-k5" x="862" y="72">OpenClaw</text>
+</g>
+
+<rect class="s-you" x="170" y="110" width="180" height="40" rx="10"/><rect class="s-ln" x="186" y="126" width="120" height="8"/>
+<rect class="s-bar" x="40" y="165" width="270" height="40" rx="10"/><rect class="s-ln" x="56" y="175" width="200" height="7"/><rect class="s-ln" x="56" y="188" width="130" height="7"/>
+<rect class="s-you" x="200" y="230" width="150" height="40" rx="10"/><rect class="s-ln" x="216" y="246" width="90" height="8"/>
+<rect class="s-bar" x="40" y="285" width="290" height="40" rx="10"/><rect class="s-ln" x="56" y="295" width="120" height="7"/><rect class="s-r" x="182" y="295" width="70" height="7"/><rect class="s-ln" x="56" y="308" width="170" height="7"/>
+<rect class="s-you" x="150" y="350" width="200" height="40" rx="10"/><rect class="s-ln" x="166" y="366" width="140" height="8"/>
+<rect class="s-bar" x="40" y="405" width="250" height="40" rx="10"/><rect class="s-ln" x="56" y="415" width="180" height="7"/><rect class="s-ln" x="56" y="428" width="110" height="7"/>
+
+<rect class="s-bar" x="36" y="486" width="318" height="56" rx="12"/>
+<g class="s-sent" style="font-size: 22px">
+<text class="s-on s-k0" x="52" y="520">beam this session to Claude Code</text>
+<text class="s-on s-k1" x="52" y="520">beam this session to Codex</text>
+<text class="s-on s-k2" x="52" y="520">beam this session to Gemini CLI</text>
+<text class="s-on s-k3" x="52" y="520">beam this session to Pi</text>
+<text class="s-on s-k4" x="52" y="520">beam this session to OpenCode</text>
+<text class="s-on s-k5" x="52" y="520">beam this session to OpenClaw</text>
+</g>
+<rect class="s-mask" x="50" y="498" width="300" height="32"/>
+<g class="s-n" transform="translate(326,505) scale(2)" shape-rendering="crispEdges" style="opacity: .6"><rect x="0" y="4" width="1" height="2"/><rect x="2" y="4" width="1" height="2"/><rect x="4" y="4" width="5" height="2"/><rect x="6" y="2" width="1" height="6"/><rect x="7" y="3" width="1" height="4"/><rect x="5" y="1" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="9" y="4" width="1" height="2"/></g>
+
+<rect class="s-bar" x="546" y="486" width="318" height="56" rx="12"/>
+<text class="s-ready" x="562" y="520" style="font-size: 22px; fill: var(--soft)">ready for your next instruction</text>
+
+<g class="s-f s-f0"><rect class="s-you" x="170" y="110" width="180" height="40" rx="10"/><rect class="s-ln" x="186" y="126" width="120" height="8"/></g>
+<g class="s-f s-f1"><rect class="s-bar" x="40" y="165" width="270" height="40" rx="10"/><rect class="s-ln" x="56" y="175" width="200" height="7"/><rect class="s-ln" x="56" y="188" width="130" height="7"/></g>
+<g class="s-f s-f2"><rect class="s-you" x="200" y="230" width="150" height="40" rx="10"/><rect class="s-ln" x="216" y="246" width="90" height="8"/></g>
+<g class="s-f s-f3"><rect class="s-bar" x="40" y="285" width="290" height="40" rx="10"/><rect class="s-ln" x="56" y="295" width="120" height="7"/><rect class="s-g" x="182" y="295" width="70" height="7"/><rect class="s-ln" x="56" y="308" width="170" height="7"/></g>
+<g class="s-f s-f4"><rect class="s-you" x="150" y="350" width="200" height="40" rx="10"/><rect class="s-ln" x="166" y="366" width="140" height="8"/></g>
+<g class="s-f s-f5"><rect class="s-bar" x="40" y="405" width="250" height="40" rx="10"/><rect class="s-ln" x="56" y="415" width="180" height="7"/><rect class="s-ln" x="56" y="428" width="110" height="7"/></g>
+
+<rect class="s-halo" x="393" y="243" width="114" height="114"/>
+<rect class="s-core" x="405" y="255" width="90" height="90"/>
+<g class="s-logo" transform="translate(420,270) scale(6)" shape-rendering="crispEdges"><rect x="0" y="4" width="1" height="2"/><rect x="2" y="4" width="1" height="2"/><rect x="4" y="4" width="5" height="2"/><rect x="6" y="2" width="1" height="6"/><rect x="7" y="3" width="1" height="4"/><rect x="5" y="1" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="9" y="4" width="1" height="2"/></g>
+<g class="s-scanwin"><rect class="s-scan" x="405" y="259" width="90" height="4" style="opacity: .7"/></g>
+<rect class="s-r s-drop" x="438" y="351" width="24" height="7"/>
+<text class="s-cap" x="450" y="398" text-anchor="middle" style="font-size: 21px; fill: var(--soft)">private bits</text>
+<text class="s-cap" x="450" y="420" text-anchor="middle" style="font-size: 21px; fill: var(--soft)">stay here</text>
+
+<g text-anchor="middle">
+<text class="s-t s-rep s-k0" x="705" y="592" style="font-size: 24px">staged in Claude Code</text>
+<text class="s-t s-rep s-k1" x="705" y="592" style="font-size: 24px">open in Codex</text>
+<text class="s-t s-rep s-k2" x="705" y="592" style="font-size: 24px">staged in Gemini CLI</text>
+<text class="s-t s-rep s-k3" x="705" y="592" style="font-size: 24px">staged in Pi</text>
+<text class="s-t s-rep s-k4" x="705" y="592" style="font-size: 24px">open in OpenCode</text>
+<text class="s-t s-rep s-k5" x="705" y="592" style="font-size: 24px">shared to your OpenClaw Gateway</text>
+</g>
+</svg>
+<svg class="s-svg s-svgm" viewBox="0 0 360 830" role="img" aria-label="Two app windows, one above the other. In the top window, Codex, you type: beam this session to Claude Code. The messages drop through the Beam tile, where a private detail slides away, and stack up in the bottom window, Claude Code, which ends ready for your next instruction. Then another pair of agents takes a turn.">
+<g class="s-glowwrap" aria-hidden="true"><g class="s-glow"><text x="15" y="290" textLength="330" lengthAdjust="spacingAndGlyphs">       . ..:.:::::.:..        </text><text x="15" y="310" textLength="330" lengthAdjust="spacingAndGlyphs">    ..::--=-=-===-=--:-::     </text><text x="15" y="330" textLength="330" lengthAdjust="spacingAndGlyphs">   ::--==+=+++++++=+==--::..  </text><text x="15" y="350" textLength="330" lengthAdjust="spacingAndGlyphs">..::-===****#####*#**++==--:. </text><text x="15" y="370" textLength="330" lengthAdjust="spacingAndGlyphs"> ::--=+**##%#%%%%%##**++==--..</text><text x="15" y="390" textLength="330" lengthAdjust="spacingAndGlyphs">::--==**##%%@@@@@@@%#**++==-:.</text><text x="15" y="410" textLength="330" lengthAdjust="spacingAndGlyphs">.::-=++**##%%@@@@@%%##*+==--:.</text><text x="15" y="430" textLength="330" lengthAdjust="spacingAndGlyphs">.:--==++**##%%@%@%%##**++=-::.</text><text x="15" y="450" textLength="330" lengthAdjust="spacingAndGlyphs"> ..--==++****#*#*#**++==--::. </text><text x="15" y="470" textLength="330" lengthAdjust="spacingAndGlyphs">  ..::--==++++*+*++++==--::.  </text><text x="15" y="490" textLength="330" lengthAdjust="spacingAndGlyphs">     ..::--=-=-=-=----::..    </text><text x="15" y="510" textLength="330" lengthAdjust="spacingAndGlyphs">        ..:::::::::.:..       </text></g></g>
+<path class="s-path" d="M180 330V460"/>
+<g class="s-shadow"><rect class="s-win" x="10" y="10" width="340" height="320" rx="14"/><rect class="s-win" x="10" y="460" width="340" height="320" rx="14"/></g>
+<path class="s-tbf" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-tbf" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-codex s-on s-k0" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-a-claude s-on s-k0" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-opencode s-on s-k1" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-a-codex s-on s-k1" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-acpx s-on s-k2" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-a-gemini s-on s-k2" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-openclaw s-on s-k3" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-a-pi s-on s-k3" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-codex s-on s-k4" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-a-opencode s-on s-k4" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-a-opencode s-on s-k5" d="M24 10h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/><path class="s-a-openclaw s-on s-k5" d="M24 460h312a14 14 0 0 1 14 14v30h-340v-30a14 14 0 0 1 14-14z"/>
+<path class="s-n" d="M30 28h8v8h-8zM44 28h8v8h-8zM58 28h8v8h-8zM30 478h8v8h-8zM44 478h8v8h-8zM58 478h8v8h-8z" style="opacity: .3"/>
+<g text-anchor="end" style="font-size: 26px">
+<text class="s-on s-k0" x="332" y="42">Codex</text>
+<text class="s-on s-k1" x="332" y="42">OpenCode</text>
+<text class="s-on s-k2" x="332" y="42">acpx</text>
+<text class="s-on s-k3" x="332" y="42">OpenClaw</text>
+<text class="s-on s-k4" x="332" y="42">Codex</text>
+<text class="s-on s-k5" x="332" y="42">OpenCode</text>
+<text class="s-on s-k0" x="332" y="492">Claude Code</text>
+<text class="s-on s-k1" x="332" y="492">Codex</text>
+<text class="s-on s-k2" x="332" y="492">Gemini CLI</text>
+<text class="s-on s-k3" x="332" y="492">Pi</text>
+<text class="s-on s-k4" x="332" y="492">OpenCode</text>
+<text class="s-on s-k5" x="332" y="492">OpenClaw</text>
+</g>
+<rect class="s-you" x="150" y="70" width="180" height="36" rx="10"/><rect class="s-ln" x="164" y="84" width="110" height="8"/>
+<rect class="s-bar" x="30" y="116" width="250" height="40" rx="10"/><rect class="s-ln" x="44" y="125" width="100" height="7"/><rect class="s-r" x="150" y="125" width="70" height="7"/><rect class="s-ln" x="44" y="138" width="160" height="7"/>
+<rect class="s-you" x="170" y="166" width="160" height="36" rx="10"/><rect class="s-ln" x="184" y="180" width="100" height="8"/>
+<rect class="s-bar" x="30" y="212" width="230" height="40" rx="10"/><rect class="s-ln" x="44" y="221" width="170" height="7"/><rect class="s-ln" x="44" y="234" width="100" height="7"/>
+<rect class="s-bar" x="26" y="264" width="308" height="52" rx="12"/>
+<g class="s-sent" style="font-size: 20px">
+<text class="s-on s-k0" x="40" y="297">beam this session to Claude Code</text>
+<text class="s-on s-k1" x="40" y="297">beam this session to Codex</text>
+<text class="s-on s-k2" x="40" y="297">beam this session to Gemini CLI</text>
+<text class="s-on s-k3" x="40" y="297">beam this session to Pi</text>
+<text class="s-on s-k4" x="40" y="297">beam this session to OpenCode</text>
+<text class="s-on s-k5" x="40" y="297">beam this session to OpenClaw</text>
+</g><rect class="s-mask" x="38" y="276" width="262" height="30"/>
+<g class="s-n" transform="translate(306,281) scale(2)" shape-rendering="crispEdges" style="opacity: .6"><rect x="0" y="4" width="1" height="2"/><rect x="2" y="4" width="1" height="2"/><rect x="4" y="4" width="5" height="2"/><rect x="6" y="2" width="1" height="6"/><rect x="7" y="3" width="1" height="4"/><rect x="5" y="1" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="9" y="4" width="1" height="2"/></g>
+<rect class="s-bar" x="26" y="714" width="308" height="52" rx="12"/><text class="s-ready" x="40" y="747" style="font-size: 20px; fill: var(--soft)">ready for your next instruction</text>
+<g class="s-f s-m0"><rect class="s-you" x="150" y="70" width="180" height="36" rx="10"/><rect class="s-ln" x="164" y="84" width="110" height="8"/></g>
+<g class="s-f s-m1"><rect class="s-bar" x="30" y="116" width="250" height="40" rx="10"/><rect class="s-ln" x="44" y="125" width="100" height="7"/><rect class="s-g" x="150" y="125" width="70" height="7"/><rect class="s-ln" x="44" y="138" width="160" height="7"/></g>
+<g class="s-f s-m2"><rect class="s-you" x="170" y="166" width="160" height="36" rx="10"/><rect class="s-ln" x="184" y="180" width="100" height="8"/></g>
+<g class="s-f s-m3"><rect class="s-bar" x="30" y="212" width="230" height="40" rx="10"/><rect class="s-ln" x="44" y="221" width="170" height="7"/><rect class="s-ln" x="44" y="234" width="100" height="7"/></g>
+<rect class="s-halo" x="123" y="338" width="114" height="114"/><rect class="s-core" x="135" y="350" width="90" height="90"/>
+<g class="s-logo" transform="translate(150,365) scale(6)" shape-rendering="crispEdges"><rect x="0" y="4" width="1" height="2"/><rect x="2" y="4" width="1" height="2"/><rect x="4" y="4" width="5" height="2"/><rect x="6" y="2" width="1" height="6"/><rect x="7" y="3" width="1" height="4"/><rect x="5" y="1" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="9" y="4" width="1" height="2"/></g>
+<g class="s-scanwin"><rect class="s-scan" x="135" y="354" width="90" height="4" style="opacity: .7"/></g>
+<rect class="s-r s-mdrop" x="228" y="370" width="24" height="7"/>
+<text class="s-cap" x="246" y="405" style="font-size: 19px; fill: var(--soft)">private bits</text><text class="s-cap" x="246" y="424" style="font-size: 19px; fill: var(--soft)">stay here</text>
+<g text-anchor="middle" style="font-size: 22px">
+<text class="s-rep s-k0" x="180" y="816">staged in Claude Code</text>
+<text class="s-rep s-k1" x="180" y="816">open in Codex</text>
+<text class="s-rep s-k2" x="180" y="816">staged in Gemini CLI</text>
+<text class="s-rep s-k3" x="180" y="816">staged in Pi</text>
+<text class="s-rep s-k4" x="180" y="816">open in OpenCode</text>
+<text class="s-rep s-k5" x="180" y="816">shared to your OpenClaw Gateway</text>
+</g></svg>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="how-title" style="padding-top: 48px">
+        <div class="section-head">
+          <h2 id="how-title">What happens when you ask</h2>
+          <p class="section-lede">The skill runs four Beam commands. You can run the same four by hand.</p>
+        </div>
+        <div class="steps">
+          <div class="window"><div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">1 pick</h3></div><div class="body"><svg class="icon" viewBox="0 0 200 64" aria-hidden="true" shape-rendering="crispEdges"><rect class="s-bar" x="0" y="4" width="140" height="14" rx="5"/><rect class="s-you" x="0" y="25" width="170" height="14" rx="5"/><rect class="s-bar" x="0" y="46" width="120" height="14" rx="5"/><g class="s-n"><rect x="180" y="29" width="4" height="6"/><rect x="184" y="26" width="4" height="12"/><rect x="188" y="23" width="4" height="18"/></g></svg><p>Beam takes the session you are in, or lists them so you can choose one.</p><p class="mono code">beam list --from codex</p></div></div>
+          <div class="window"><div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">2 clean</h3></div><div class="body"><svg class="icon" viewBox="0 0 200 64" aria-hidden="true" shape-rendering="crispEdges"><rect class="s-bar" x="0" y="12" width="80" height="40" rx="8"/><rect class="s-ln" x="10" y="22" width="52" height="6"/><rect class="s-r" x="10" y="36" width="34" height="6"/><g class="s-n"><rect x="92" y="30" width="14" height="4"/><rect x="104" y="26" width="4" height="12"/><rect x="108" y="29" width="4" height="6"/></g><rect class="s-bar" x="120" y="12" width="80" height="40" rx="8"/><rect class="s-ln" x="130" y="22" width="52" height="6"/><rect class="s-g" x="130" y="36" width="34" height="6"/></svg><p>History is cleaned on your machine. Common secrets, email addresses and local paths are redacted.</p><p class="mono code">beam pack --from codex --session "$ID" --out reviewed.beam.json</p></div></div>
+          <div class="window"><div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">3 review</h3></div><div class="body"><svg class="icon" viewBox="0 0 200 64" aria-hidden="true" shape-rendering="crispEdges"><rect class="s-bar" x="0" y="8" width="150" height="48" rx="8"/><rect class="s-ln" x="12" y="18" width="100" height="6"/><rect class="s-ln" x="12" y="29" width="70" height="6"/><rect class="s-g" x="88" y="29" width="30" height="6"/><rect class="s-ln" x="12" y="40" width="120" height="6"/><g class="s-n"><rect x="128" y="4" width="28" height="4"/><rect x="128" y="32" width="28" height="4"/><rect x="124" y="8" width="4" height="24"/><rect x="156" y="8" width="4" height="24"/><rect x="158" y="36" width="6" height="6"/><rect x="164" y="42" width="6" height="6"/><rect x="170" y="48" width="6" height="6"/></g></svg><p>You read the exact packet before it goes anywhere. A cleaner can miss things, so this step is yours.</p><p class="mono code">beam inspect reviewed.beam.json</p></div></div>
+          <div class="window"><div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">4 open</h3></div><div class="body"><svg class="icon" viewBox="0 0 200 64" aria-hidden="true" shape-rendering="crispEdges"><g class="s-n"><rect x="0" y="30" width="22" height="4"/><rect x="20" y="26" width="4" height="12"/><rect x="24" y="29" width="4" height="6"/></g><rect class="s-codef" x="40" y="2" width="150" height="60" rx="8"/><path class="s-a-opencode" d="M48 2h134a8 8 0 0 1 8 8v8h-150v-8a8 8 0 0 1 8-8z"/><rect class="s-you" x="110" y="26" width="70" height="12" rx="4"/><rect class="s-bar" x="50" y="43" width="100" height="12" rx="4"/></svg><p>The next agent opens the history with its own workspace, credentials and tool permissions.</p><p class="mono code">beam open reviewed.beam.json --in opencode</p></div></div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="review-title">
+        <div class="split">
+          <div class="split-copy">
+            <h2 id="review-title">You see the packet first</h2>
+            <p class="section-lede">The packet carries the visible messages, nothing else. Private details Beam recognizes are already swapped out. If you spot something it missed, write a new packet without that message.</p>
+            <p class="mono" style="color: var(--soft)">beam review reviewed.beam.json --omit 3 --expect-digest "$DIGEST" --out final.beam.json</p>
+            <p><span class="main-only">beam review is on main, newer than v0.1.0</span></p>
+          </div>
+          <div class="window">
+            <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">example redaction</h3></div>
+            <div class="diff" aria-label="Example email redaction">
+              <p class="meta">source   codex</p>
+              <p class="meta">dest     opencode</p>
+              <p>&#160;</p>
+              <p class="minus">- user   Send the CSV fix to <span class="red">alex@example.test</span>.</p>
+              <p class="plus">+ user   Send the CSV fix to [REDACTED_EMAIL].</p>
+              <p>&#160; agent  The parser now preserves quoted newlines.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="share" aria-labelledby="share-title">
+        <div class="section-head">
+          <h2 id="share-title">Then pass it to a friend</h2>
+          <p class="section-lede">Share a reviewed session with your team through an OpenClaw Gateway. Teammates read it there and open it in their own agent.</p>
+        </div>
+        <div class="trio">
+          <div class="window">
+            <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">share to OpenClaw</h3></div>
+            <div class="body">
+              <p>Install <a href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Beam v0.1.0</a> and set <code>BEAM_AUTH_TOKEN</code> to a Gateway credential allowed to publish. Sharing starts no model turn.</p>
+              <pre class="mono code"><span class="comment"># OpenClaw 2026.11.10 reads v1 packets</span>
+beam convert reviewed.beam.json \
+  --packet-version 1 --out task.v1.json
 beam inspect task.v1.json
-
-<span class="comment"># Replace the host with your Gateway</span>
 beam share task.v1.json \
-  --to https://gateway.example/api/v1/beam/sessions</code></pre>
+  --to https://gateway.example/api/v1/beam/sessions</pre>
+              <p style="font-size: 15px; color: var(--soft)">Open the <code>url</code> in the receipt to read the snapshot.</p>
+            </div>
+          </div>
+          <div class="window">
+            <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">on the receiving Gateway</h3></div>
+            <div class="body">
+              <p>Enable Beam and restart. Readers sign in to the Gateway, which checks each caller’s access. <a href="https://docs.openclaw.ai/plugins/beam">OpenClaw setup</a></p>
+              <pre class="mono code" style="margin-top: 0">openclaw plugins enable beam
+openclaw gateway restart</pre>
+              <details>
+                <summary>Cloudflare Access and v2 Gateways</summary>
+                <p>Add <code>--cloudflare-login</code> to sign in through <code>cloudflared</code>. The Gateway still checks its own credential. The <a href="https://github.com/openclaw/beam#share-with-openclaw">README</a> covers service tokens and existing Access tokens.</p>
+                <p>The commands use the <a href="https://github.com/openclaw/openclaw/blob/v2026.11.10/extensions/beam/index.ts">v1 receiver in OpenClaw 2026.11.10</a>. With a <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">v2 Gateway</a>, inspect <code>reviewed.beam.json</code> and share it directly to the Gateway base URL.</p>
+              </details>
+            </div>
+          </div>
+          <div class="window">
+            <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><span class="soon">Planned, not shipped</span><h3 class="wt">short links</h3></div>
+            <div class="body">
+              <p>Beam a session to a short link. Host the relay yourself, or use ours. Your friend pastes it into their own agent.</p>
+              <div class="chat" aria-label="Example chat">
+                <span class="bub c1">can you beam this session as a link?</span>
+                <span class="mono c2">beam.here/s/[LINK ID]</span>
+                <span class="bub2 c3">pull that beam.here link into my Codex</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <p class="receipt">Open the <code>url</code> in the receipt to read the snapshot in OpenClaw. Sharing starts no model turn.</p>
-        <details class="inline-details"><summary>Try it with a file instead</summary>
-          <p>Use a POSIX shell to create a packet without a harness. Continue with the conversion and sharing commands above.</p>
-          <pre><code>printf '%s\n' 'Keep quoted newlines in the CSV parser.' |
-  beam pack --from file --session - --out task.beam.json
-beam render task.beam.json</code></pre>
-        </details>
-      </div>
-    </section>
+      </section>
 
-    <section class="section privacy wrap" aria-labelledby="privacy-title">
-      <div class="section-heading">
-        <h2 id="privacy-title">What travels</h2>
-        <p>The packet carries visible messages. Your workspace, tools, and credentials stay with their agent. The cleaner looks for common secrets, email addresses, and local paths. Read the result before you send it.</p>
-      </div>
-      <div class="comparison" aria-label="Example email redaction">
-        <div><h3>Source message</h3><p>Send the CSV fix to <mark>alex@example.test</mark>.</p></div>
-        <div><h3>In the packet</h3><p>Send the CSV fix to <strong>[REDACTED_EMAIL]</strong>.</p></div>
-      </div>
-    </section>
+      <section class="section" aria-labelledby="files-title">
+        <div class="split">
+          <div class="split-copy">
+            <h2 id="files-title">Bring the files, too</h2>
+            <p class="section-lede">A portable bundle carries the reviewed conversation and the images, documents, audio or video you pick. Open the preview offline, or extract the original files from the ZIP.</p>
+            <p><span class="main-only">Bundles are on main, newer than v0.1.0</span></p>
+          </div>
+          <div class="window">
+            <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">beam bundle</h3></div>
+            <div class="body">
+              <pre class="mono code">beam bundle create reviewed.beam.json \
+  --attach screenshot.png --attach brief.pdf \
+  --out task.beam.zip
+beam bundle preview task.beam.zip --out task.html</pre>
+              <p style="font-size: 15px; color: var(--soft)">The sample pairs Beam’s cover artwork with its design note. OpenClaw share links carry the text snapshot.</p>
+              <div class="actions"><a class="button" href="example.html">view sample</a><a href="example.beam.zip" download>Download bundle</a></div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <section class="section wrap" aria-labelledby="assets-title">
-      <div class="section-heading"><h2 id="assets-title">Bring the files, too</h2>
-        <p>A portable bundle carries the reviewed conversation and the images, documents, audio, or video you select. Open the preview offline, or extract the original files from the ZIP.</p>
-      </div>
-      <div><p>The sample pairs Beam’s cover artwork with its design note. Bundling is available on <a href="https://github.com/openclaw/beam#images-and-files">Beam main</a>. OpenClaw share links carry the text snapshot.</p>
-        <div class="actions"><a class="button" href="example.html">View sample</a><a class="text-action" href="example.beam.zip" download>Download bundle ↓</a></div>
-      </div>
-    </section>
-
-    <section class="section wrap support" id="support" aria-labelledby="support-title">
-      <div class="section-heading">
-        <h2 id="support-title">Harness support</h2>
-        <p>Direct adapters read native history. For an acpx recording, use <code>acpx:PROFILE</code> from the same project. The packet is marked partial because acpx retains a bounded history. Give the destination a new instruction when you want a reply. Run <code>beam doctor --json</code> to check your installation.</p>
-      </div>
-      <div>
-        <table class="harness-table"><thead><tr><th scope="col">Harness</th><th scope="col">What you can do</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Codex</th><td>Export a thread or open a new one with the packet in model context. Earlier turns do not appear individually in the UI.</td></tr>
-            <tr><th scope="row">OpenCode</th><td>Export a session or open a new one with the history in a single reference message.</td></tr>
-            <tr><th scope="row">Claude Code · Pi</th><td>Export selected history or stage a reference for the first explicit instruction.</td></tr>
-            <tr><th scope="row">Gemini CLI</th><td>Import a staged session file, then finish login in Gemini.</td></tr>
-            <tr><th scope="row">acpx 0.22.0</th><td>Read a selected ACP session and stage a reference. Continue manually in the target agent.</td></tr>
-            <tr><th scope="row">OpenClaw</th><td>Export a selected Gateway session or share a packet with an enabled receiver. The Gateway checks each caller’s access.</td></tr>
-            <tr><th scope="row">Local file</th><td>Pack selected text or render Markdown to attach in another tool.</td></tr>
-          </tbody>
-        </table>
-        <details class="inline-details"><summary>Tested versions and fixture results</summary>
+      <section class="section" id="support" aria-labelledby="support-title">
+        <div class="section-head">
+          <h2 id="support-title">Works with what you run</h2>
+          <p class="section-lede">Each version was exercised with synthetic conversations. Run <code>beam doctor --json</code> to see what your installation supports.</p>
+        </div>
+        <div class="window">
+          <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">direct adapters</h3></div>
+          <div>
+            <div class="row"><p><span class="chip" style="background: var(--c-codex)"><img src="marks/codex.png" alt="" width="20" height="20">Codex</span></p><p class="mono">0.172.0</p><p>Export a thread, or open a new one with the history in model context.</p></div>
+            <div class="row"><p><span class="chip" style="background: var(--c-opencode)"><img src="marks/opencode.png" alt="" width="20" height="20">OpenCode</span></p><p class="mono">1.19.6</p><p>Export a session, or open a new one with the history as one reference message.</p></div>
+            <div class="row"><p><span class="chip" style="background: var(--c-claude)"><img src="marks/claude.png" alt="" width="20" height="20">Claude Code</span></p><p class="mono">2.1.296</p><p>Export selected history, or stage a reference for your first explicit instruction.</p></div>
+            <div class="row"><p><span class="chip" style="background: var(--c-pi)"><img src="marks/pi.png" alt="" width="20" height="20">Pi</span></p><p class="mono">0.83.0</p><p>Export selected history, or stage a reference for your first explicit instruction.</p></div>
+            <div class="row"><p><span class="chip" style="background: var(--c-gemini)"><img src="marks/gemini.png" alt="" width="20" height="20">Gemini CLI</span></p><p class="mono">0.45.0</p><p>Import a staged session file, then finish login in Gemini.</p></div>
+            <div class="row"><p><span class="chip" style="background: var(--c-openclaw)"><img src="marks/openclaw.png" alt="" width="20" height="20">OpenClaw</span></p><p class="mono">2026.11.10</p><p>Export a selected Gateway session, or share a packet with an enabled receiver.</p></div>
+            <div class="row"><p><span class="chip plain" style="background: var(--tb)">Local file</span></p><p class="mono">UTF-8</p><p>Pack selected text, or render Markdown to attach in another tool.</p></div>
+          </div>
+        </div>
+        <div class="window more">
+          <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">through acpx 0.22.0</h3></div>
+          <p style="padding: 18px 18px 0">Use <code>--from acpx:PROFILE</code> in the project where acpx recorded the session. Beam marks these packets partial because acpx keeps a bounded history, and stages a reference you continue in the agent.</p>
+          <ul class="profiles">
+            <li data-profile="cursor"><img src="marks/cursor.png" alt="" width="24" height="24">Cursor</li>
+            <li data-profile="copilot"><img src="marks/copilot.png" alt="" width="24" height="24">GitHub Copilot</li>
+            <li data-profile="goose"><img src="marks/goose.png" alt="" width="24" height="24">Goose</li>
+            <li data-profile="kiro"><img src="marks/kiro.png" alt="" width="24" height="24">Kiro</li>
+            <li data-profile="kimi"><img src="marks/kimi.png" alt="" width="24" height="24">Kimi</li>
+            <li data-profile="qwen"><img src="marks/qwen.png" alt="" width="24" height="24">Qwen Code</li>
+            <li data-profile="antigravity"><img src="marks/antigravity.png" alt="" width="24" height="24">Antigravity</li>
+            <li data-profile="ante"><img src="marks/ante.png" alt="" width="24" height="24">Ante</li>
+            <li data-profile="deepseek-harness"><img src="marks/deepseek-harness.png" alt="" width="24" height="24">DeepSeek Harness</li>
+            <li data-profile="devin"><img src="marks/devin.png" alt="" width="24" height="24">Devin</li>
+            <li data-profile="droid"><img src="marks/droid.png" alt="" width="24" height="24">Factory Droid</li>
+            <li data-profile="fast-agent"><img src="marks/fast-agent.png" alt="" width="24" height="24">fast-agent</li>
+            <li data-profile="fx"><img src="marks/fx.png" alt="" width="24" height="24">fx</li>
+            <li data-profile="grok-build"><img src="marks/grok-build.png" alt="" width="24" height="24">Grok Build</li>
+            <li data-profile="iflow"><img src="marks/iflow.png" alt="" width="24" height="24">iFlow</li>
+            <li data-profile="junie"><img src="marks/junie.png" alt="" width="24" height="24">Junie</li>
+            <li data-profile="kilocode"><img src="marks/kilocode.png" alt="" width="24" height="24">Kilo Code</li>
+            <li data-profile="mcode"><img src="marks/mcode.png" alt="" width="24" height="24">MCode</li>
+            <li data-profile="mux"><img src="marks/mux.png" alt="" width="24" height="24">Mux</li>
+            <li data-profile="octomind"><img src="marks/octomind.png" alt="" width="24" height="24">Octomind</li>
+            <li data-profile="pool"><img src="marks/pool.png" alt="" width="24" height="24">Poolside</li>
+            <li data-profile="qoder"><img src="marks/qoder.png" alt="" width="24" height="24">Qoder</li>
+            <li data-profile="trae"><img src="marks/trae.png" alt="" width="24" height="24">Trae</li>
+            <li data-profile="zeroclaw"><img src="marks/zeroclaw.png" alt="" width="24" height="24">ZeroClaw</li>
+          </ul>
+        </div>
+        <details class="more">
+          <summary>Tested versions and fixture results</summary>
           <p>The <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#out-of-box-harness-coverage">versioned harness tests</a> cover native copies, staged references, and manual imports. The <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md#qualification-on-openclaw-main">Gateway tests</a> cover private links, credential rotation, restart, and release.</p>
           <!-- adapter fixture results -->
           <!-- acpx profile results -->
         </details>
-      </div>
-    </section>
+      </section>
 
-    <section class="section wrap connect" aria-labelledby="gateway-title">
-      <div class="section-heading">
-        <h2 id="gateway-title">Connect OpenClaw</h2>
-        <p>On the receiving Gateway, enable Beam and restart. Give the sender the HTTPS endpoint and a credential allowed to publish. Readers sign in to the Gateway to open shared snapshots.</p>
-        <a class="text-action" href="https://docs.openclaw.ai/plugins/beam">OpenClaw setup <span aria-hidden="true">↗</span></a>
-      </div>
-      <div>
-        <pre class="plain-code"><code><span class="comment"># On the receiving Gateway</span>
-openclaw plugins enable beam
-openclaw gateway restart</code></pre>
-        <details class="inline-details"><summary>Cloudflare Access and receiver versions</summary>
-          <p>Add <code>--cloudflare-login</code> to sign in through <code>cloudflared</code>. The Gateway still checks its own credential. The <a href="https://github.com/openclaw/beam#share-with-openclaw">README</a> covers service tokens and existing Access tokens.</p>
-          <p>The quickstart uses the <a href="https://github.com/openclaw/openclaw/blob/v2026.11.10/extensions/beam/index.ts">v1 receiver in OpenClaw 2026.11.10</a>. With a <a href="https://github.com/openclaw/openclaw/commit/7071b82bac28e93782cb56ba4559aaab0bebe049">v2 Gateway</a>, inspect <code>task.beam.json</code> and share it directly to the Gateway base URL. Use the returned private link to open it.</p>
-        </details>
-      </div>
-    </section>
-  </main>
-  <footer class="wrap"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span>Beam</a>
-    <nav aria-label="Resources"><a href="https://github.com/openclaw/beam#on-the-main-branch">Tools on main</a><a href="https://github.com/openclaw/beam/tree/main/schema">Schemas</a><a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill</a><a href="https://github.com/openclaw/beam/tree/main/site/marks">Logo credits</a><a href="https://github.com/openclaw/beam/blob/main/LICENSE">MIT</a></nav>
-  </footer>
+      <section class="section" aria-labelledby="oss-title">
+        <div class="band-wrap">
+<svg class="band" viewBox="0 0 1200 72" preserveAspectRatio="none" aria-hidden="true">
+<text x="0" y="14" textLength="1200" lengthAdjust="spacingAndGlyphs">       . . . . . . .                           . ....... . . . .           . . . . . . .                       . . ............. . .               .   .                           . ............. .    </text>
+<text x="0" y="28" textLength="1200" lengthAdjust="spacingAndGlyphs">:.:.:.:::::::.:.:.:...... . . ......:.::::-:-:-:-:-::::::.:.:.:...:.:.:.:.:.:.:.:.:.......... ... ....:.::::::-:-:-:-:-::::::.:...........:.:.:.:.:.:.:.................:.::::-:-:-:-:-:-:-::.:.:.......</text>
+<text x="0" y="42" textLength="1200" lengthAdjust="spacingAndGlyphs">--------------:-:-:::-:::-:------=-===========-=-=------:-:-:-:-:-:---------------:-:-:-:-:-:-:----=-=============-=------:-:-:-:-:-:-:---------------:---:-:-:------=-=============-=----:-:-:::::::-:-</text>
+<text x="0" y="56" textLength="1200" lengthAdjust="spacingAndGlyphs">*+*+*+++++++++++++++++*+******#*#*#*#*#****+*++++++=+++=++++++++*+*+*+*+*+*+*+++++++++++*+*+****#*#*#*#*#******+*++++=+=+=+=++++++++*+*+*+*+*+*+*+*+*+++*+*+*+*+****#*#*#******+*++++++=+=+=+=+=++++++*+</text>
+<text x="0" y="70" textLength="1200" lengthAdjust="spacingAndGlyphs">#%#%#%#%#%#%#%#%#%%%%%%@%@%@%@%@%@%%%%#%########*######%#%#%#%%%%%%%%%%%#%#%#%#%#%%%%%%%%%%@%@%@%@%@%%%%#%#%####*#*#*######%#%%%%%%%%%%%%%%%%%%%#%#%#%%%%%%%%%%@%@%@%%%%%%#%########*#*#*######%#%%%%%%@</text>
+</svg>
+        </div>
+        <div class="oss">
+          <div>
+            <h2 id="oss-title">Open source. MIT license.</h2>
+            <p>Beam started inside OpenClaw’s core. It now stands alone, with a public packet schema and conformance tests you can run.</p>
+          </div>
+          <div class="oss-links">
+            <a class="repo" href="https://github.com/openclaw/beam">github.com/openclaw/beam</a>
+            <nav aria-label="Project resources">
+              <a href="https://github.com/openclaw/beam/blob/main/LICENSE">License</a>
+              <a href="https://github.com/openclaw/beam/tree/main/schema">Schemas</a>
+              <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md">Protocol</a>
+              <a href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download v0.1.0</a>
+            </nav>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Beam is an OpenClaw project.</p>
+      <nav aria-label="Resources">
+        <a href="https://github.com/openclaw/beam#on-the-main-branch">Tools on main</a>
+        <a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill</a>
+        <a href="https://github.com/openclaw/beam/tree/main/site/marks">Logo credits</a>
+      </nav>
+    </footer>
+  </div>
 </body>
 </html>
