@@ -51,6 +51,14 @@ The Gateway controls which sessions each caller can see and which operations the
 
 The source and destination negotiate operations independently. Native destinations can reopen conversations. Staged destinations produce a reference and a next action. See the [harness matrix](https://openclaw.github.io/beam/#support).
 
+On builds from main, `beam adapter test --in HARNESS --json` validates the capability receipt. For a synthetic session you created in the harness, use `--session ID --fixture expected.beam.json` to compare the cleaned items in order. Add an external executable with `--adapter name=/absolute/executable`.
+
+To exercise a destination in a disposable harness profile, explicitly choose `--mode stage` or `--mode native` with a fixture. This creates a real test reference or native session. The runner resolves the reference and reads back native items when the adapter advertises those operations. Its report separates advertised operations from observed checks and omits conversation contents and handles. For the file adapter, `--out` chooses the new Markdown artifact.
+
+```sh
+beam adapter test --in file --fixture conformance/packet/example.beam.json --mode stage --out fixture.md --json
+```
+
 The [portable Beam skill](integrations/skill/SKILL.md) gives an agent the same review, transfer, and explicit-send workflow.
 
 Hosts that only need local cleaning can embed the matching `beam-clean` executable with its [redistribution notices](CLEANER-NOTICE.txt). Each release's `cleaners.json` lists the raw gzip, compressed and executable sizes, and both SHA-256 digests for each platform. Invoke `beam-clean clean --protocol 1` with a candidate on stdin. It uses the same implementation as the CLI, writes packet bytes to stdout, and writes the omission counts to stderr.

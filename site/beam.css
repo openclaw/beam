@@ -46,6 +46,9 @@ pre, code { font-family: var(--mono); font-size: .86rem; line-height: 1.65; }
 table { border-collapse: collapse; width: 100%; margin-top: 1.4rem; text-align: left; line-height: 1.45; }
 th, td { vertical-align: top; padding: .75rem .85rem .75rem 0; border-bottom: 1px solid var(--line); }
 tbody th { width: 32%; font-weight: 560; }
+.fixture-matrix { overflow-x: auto; }
+.fixture-matrix table { min-width: 34rem; }
+.fixture-matrix tbody th { width: auto; }
 footer { color: var(--muted); }
 @media (max-width: 42rem) {
   body { width: min(100% - 2rem, 65rem); }

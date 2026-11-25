@@ -2,12 +2,14 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: [site/**, .github/workflows/pages.yml]
+    paths: &matrix_paths ['site/**', '**/*.go', 'go.mod', 'go.sum', 'conformance/packet/example.beam.json', 'scripts/render-matrix.py', '.github/workflows/pages.yml']
+  pull_request:
+    paths: *matrix_paths
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   build:
@@ -20,11 +22,30 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - name: Verify synthetic handoffs and render the matrix
+        run: |
+          go build -o "$RUNNER_TEMP/beam" ./cmd/beam
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/harnesses" @openai/codex@0.172.0 opencode-ai@1.19.6
+          export BEAM_E2E_BINARY="$RUNNER_TEMP/beam"
+          export BEAM_E2E_CODEX="$RUNNER_TEMP/harnesses/node_modules/.bin/codex"
+          export BEAM_E2E_OPENCODE="$RUNNER_TEMP/harnesses/node_modules/.bin/opencode"
+          export BEAM_E2E_MATRIX="$GITHUB_WORKSPACE/site/matrix.json"
+          go test -count=1 -tags=beam_native ./conformance/e2e -run '^TestAdapterMatrix$'
+          python3 scripts/render-matrix.py site
+      - if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: site
   publish:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

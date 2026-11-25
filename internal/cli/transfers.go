@@ -184,6 +184,10 @@ func open(ctx context.Context, dst adapter.Adapter, p packet.Packet, o options) 
 	if err != nil {
 		return nil, err
 	}
+	return openWithCapabilities(ctx, dst, p, o, c)
+}
+
+func openWithCapabilities(ctx context.Context, dst adapter.Adapter, p packet.Packet, o options, c adapter.Capabilities) (any, error) {
 	op, err := destinationOperation(c, o.values["mode"])
 	if err != nil {
 		return nil, err

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -89,6 +90,22 @@ func TestIndependentAdapterThroughCLI(t *testing.T) {
 	invoke := func(args ...string) []byte {
 		t.Helper()
 		return c.run(t, nil, append(args, "--adapter", "external="+child)...)
+	}
+	// Use an independent expected projection. A wrong read, dropped item, or
+	// uncleaned address must fail even when the executable advertises read.
+	fixture := filepath.Join(c.dir, "fixture.json")
+	const prefix = `{"version":2,"beamId":"0123456789abcdef0123456789abcdef","source":"external","title":"Fixture","updatedAt":"2026-01-02T03:04:05Z","completed":false,"items":[{"type":"userMessage","text":"`
+	want := prefix + sourceMarker + `"},{"type":"agentMessage","text":"[REDACTED_EMAIL]"}]}`
+	if err := os.WriteFile(fixture, []byte(want), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var evidence struct{ Observed []string }
+	machineResult(t, invoke("adapter", "test", "--in", "external", "--fixture", fixture, "--session", "branch-a", "--json"), &evidence)
+	if !slices.Equal(evidence.Observed, []string{"capabilities", "selected-items-match"}) {
+		t.Fatal(evidence)
+	}
+	if _, err := os.Stat(filepath.Join(c.dir, "staged.json")); !os.IsNotExist(err) {
+		t.Fatal("source fixture unexpectedly staged")
 	}
 	var list struct{ Entries []struct{ Selection string } }
 	machineResult(t, invoke("list", "--from", "external", "--json"), &list)
