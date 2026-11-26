@@ -169,7 +169,7 @@ pre.code { font-size: 13px; }
 .plus { background: var(--plus); }
 .red { color: var(--red); font-weight: 500; }
 .trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 24px; }
-.soon, .main-only { padding: 1px 9px; border: 1.5px dashed var(--soft); border-radius: 999px; color: var(--soft); font: 600 12.5px/1.5 "Geist", sans-serif; }
+.soon { padding: 1px 9px; border: 1.5px dashed var(--soft); border-radius: 999px; color: var(--soft); font: 600 12.5px/1.5 "Geist", sans-serif; }
 .chat { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
 .bub { align-self: flex-start; max-width: 85%; padding: 8px 12px; border-radius: 12px 12px 12px 4px; background: var(--you); font-size: 15px; }
 .bub2 { align-self: flex-end; max-width: 85%; padding: 8px 12px; border-radius: 12px 12px 4px 12px; background: var(--ink); color: var(--win); font-size: 15px; }

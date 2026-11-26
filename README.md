@@ -2,7 +2,7 @@
 
 Bring a coding conversation into **OpenClaw**. Beam reads the session you select, cleans its visible messages locally, and gives you a packet to inspect before you share it. Your team opens the returned link in its own Gateway.
 
-[Website](https://openclaw.github.io/beam/) · [Download Beam](https://github.com/openclaw/beam/releases/tag/v0.1.0) · [Harness test results](https://openclaw.github.io/beam/#support)
+[Website](https://openclaw.github.io/beam/) · [Download Beam](https://github.com/openclaw/beam/releases/latest) · [Harness test results](https://openclaw.github.io/beam/#support)
 
 ## Where your session can come from
 
@@ -28,7 +28,7 @@ For a session saved by acpx 0.22.0, run `beam list --from acpx:PROFILE` in the p
 
 ## Install
 
-[Download Beam v0.1.0](https://github.com/openclaw/beam/releases/tag/v0.1.0) for macOS, Linux, or Windows. Extract `beam` (`beam.exe` on Windows) to a directory on your `PATH`. Run `beam doctor --json` to see which agents are available locally.
+[Download the latest Beam release](https://github.com/openclaw/beam/releases/latest) for macOS, Linux, or Windows. Extract `beam` (`beam.exe` on Windows) to a directory on your `PATH`. Run `beam doctor --json` to see which agents are available locally.
 
 <details>
 <summary>Install with Go or verify a download</summary>
@@ -36,7 +36,7 @@ For a session saved by acpx 0.22.0, run `beam list --from acpx:PROFILE` in the p
 Use Go 1.25 or newer.
 
 ```sh
-go install -ldflags="-X main.version=0.1.0" github.com/openclaw/beam/cmd/beam@v0.1.0
+go install github.com/openclaw/beam/cmd/beam@v0.2.0
 beam --version
 ```
 
@@ -84,7 +84,7 @@ beam share task.beam.json --to https://gateway.example
 
 ## Images and files
 
-On `main`, bundle screenshots, PDFs, text, audio, or video with a reviewed conversation. Choose each attachment explicitly. Beam preserves its original bytes, including embedded metadata. Check the files as well as the messages before sharing.
+Bundle screenshots, PDFs, text, audio, or video with a reviewed conversation. Choose each attachment explicitly. Beam preserves its original bytes, including embedded metadata. Check the files as well as the messages before sharing.
 
 ```sh
 beam bundle create task.beam.json --attach screenshot.png --attach brief.pdf --out task.beam.zip
@@ -113,18 +113,15 @@ Other bundle types travel as a ZIP. On a text-only Gateway, share the reviewed p
 
 Run `beam open task.beam.json --in opencode` for a native copy, or `beam render task.beam.json` for Markdown. Beam cleans visible messages locally and can redact common secrets, email addresses, and local paths. Read the packet before sharing it. The [support matrix](https://openclaw.github.io/beam/#support) lists tested versions and what each destination can reopen.
 
-## On the main branch
-
-Build from `main` to use `beam review`, `beam plan`, and `beam adapter test`. These commands are newer than v0.1.0.
+## Review and plan a handoff
 
 ```sh
-go install github.com/openclaw/beam/cmd/beam@main
 beam review task.beam.json
 beam plan task.beam.json --in opencode
 beam adapter test --in opencode --json
 ```
 
-`review` numbers the messages. To write an edited packet, pass `--keep N` or `--omit N`, the digest from review with `--expect-digest`, and a new `--out` file. `plan` shows how the destination will open that file.
+`review` numbers the messages. To write an edited packet, pass `--keep N` or `--omit N`, the digest from review with `--expect-digest`, and a new `--out` file. `plan` shows how the destination will open that file. `adapter test` reports the capabilities the installed adapter advertises.
 
 ## Build an integration
 
