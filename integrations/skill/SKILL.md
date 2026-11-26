@@ -9,7 +9,11 @@ Use the installed `beam` executable. Run `beam doctor --json` to see which harne
 
 ## Include images and files
 
-When `beam capabilities --json` reports bundle version 1, run `beam bundle create reviewed.beam.json --attach FILE --out handoff.beam.zip` with the files the user selected. Repeat `--attach` for each file. Run `beam bundle inspect handoff.beam.zip --json` to verify its contents. Attachments preserve their original bytes and metadata. To show them to the user, run `beam bundle preview handoff.beam.zip --out handoff.html`. Gateway snapshot links carry the conversation text; deliver a requested rich handoff as the ZIP. [Bundle workflow](https://github.com/openclaw/beam/pull/8)
+When `beam capabilities --json` reports bundle version 1, run `beam bundle create reviewed.beam.json --attach FILE --out handoff.beam.zip` with the files the user selected. Repeat `--attach` for each file. By default each file keeps its original bytes and metadata.
+
+If the user requests PNG metadata removal, check for `strip-png-metadata` in `result.bundleTransforms`. On a supported build, pass `--strip-png-metadata` during creation. If the capability is missing, tell the user before sharing. Check the filenames and image content, too.
+
+Run `beam bundle inspect handoff.beam.zip --json` and show the result with `beam bundle preview handoff.beam.zip --out handoff.html`. A Gateway advertising `publishScreenshot` accepts a reviewed v2 packet with one PNG within its limits. Deliver other bundles as ZIP files. [Bundle workflow](https://github.com/openclaw/beam#images-and-files)
 
 ## Copy a conversation
 

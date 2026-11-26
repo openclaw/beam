@@ -59,7 +59,9 @@ func bundleCommand(cmd string, o options, in io.Reader, out io.Writer) (any, err
 	var artifact []byte
 	var digest string
 	if cmd == "bundle create" {
-		artifact, m, err = bundle.Create(raw, o.attachments)
+		artifact, m, err = bundle.Create(raw, bundle.CreateOptions{
+			Paths: o.attachments, StripPNGMetadata: o.values["strip-png-metadata"] != "",
+		})
 		if err != nil {
 			return nil, err
 		}

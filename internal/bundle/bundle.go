@@ -105,13 +105,18 @@ func readSelection(name string, limit int) ([]byte, error) {
 	return data, nil
 }
 
-func Create(raw []byte, paths []string) ([]byte, Manifest, error) {
+type CreateOptions struct {
+	Paths            []string
+	StripPNGMetadata bool
+}
+
+func Create(raw []byte, opts CreateOptions) ([]byte, Manifest, error) {
 	var buf bytes.Buffer
 	m := Manifest{Version: 1, PacketDigest: packet.Digest(raw)}
 	if _, err := file.ReadPacket(raw); err != nil {
 		return nil, m, err
 	}
-	if len(paths) < 1 || len(paths) > MaxAssets {
+	if len(opts.Paths) < 1 || len(opts.Paths) > MaxAssets {
 		return nil, m, fmt.Errorf("select 1 to %d files with --attach", MaxAssets)
 	}
 	z := zip.NewWriter(&buf)
@@ -127,10 +132,25 @@ func Create(raw []byte, paths []string) ([]byte, Manifest, error) {
 		return nil, m, err
 	}
 	remaining := MaxTotalBytes
-	for i, path := range paths {
-		data, err := readSelection(path, min(remaining, MaxAssetBytes))
+	for i, path := range opts.Paths {
+		limit := min(remaining, MaxAssetBytes)
+		readLimit := limit
+		if opts.StripPNGMetadata {
+			// The archive budget applies to the final image, which can be smaller than its source.
+			readLimit = MaxAssetBytes
+		}
+		data, err := readSelection(path, readLimit)
 		if err != nil {
 			return nil, m, err
+		}
+		if opts.StripPNGMetadata && http.DetectContentType(data) == "image/png" {
+			data, err = stripPNGMetadata(data, limit)
+			if err != nil {
+				return nil, m, fmt.Errorf("cleaning %q: %w", filepath.Base(path), err)
+			}
+		}
+		if len(data) > limit {
+			return nil, m, errors.New("attachments exceed bundle byte limits")
 		}
 		asset, err := describe(i, filepath.Base(path), data)
 		if err != nil {
