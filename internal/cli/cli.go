@@ -22,6 +22,7 @@ const usage = `Usage: beam COMMAND [options]
   beam pack --from HARNESS --session ID      Write a reviewed packet (--out FILE or stdout)
   beam clean --protocol 1                    Clean one selected history projection from stdin
   beam bundle create PACKET --attach FILE --out ZIP     Add files to a portable bundle
+                       [--strip-png-metadata]           Re-encode static PNGs without metadata
   beam bundle inspect ZIP                                Verify contents and show file digests
   beam bundle preview ZIP --out HTML                     Write an offline preview
   beam inspect FILE                          Show exact packet and its digest
@@ -182,7 +183,11 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		}
 		return testAdapter(ctx, dst, o, in)
 	case "capabilities":
-		info := map[string]any{"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "packetVersions": []int{1, 2}, "bundleVersions": []int{1}, "adapters": keys(reg)}
+		info := map[string]any{
+			"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "adapters": keys(reg),
+			"packetVersions": []int{1, 2}, "bundleVersions": []int{1},
+			"bundleTransforms": []string{"strip-png-metadata"},
+		}
 		if a.Legacy != nil {
 			info["skillProtocols"] = []int{1}
 		}

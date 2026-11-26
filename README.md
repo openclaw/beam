@@ -84,7 +84,7 @@ beam share task.beam.json --to https://gateway.example
 
 ## Images and files
 
-Bundle screenshots, PDFs, text, audio, or video with a reviewed conversation. Choose each attachment explicitly. Beam preserves its original bytes, including embedded metadata. Check the files as well as the messages before sharing.
+Bundle screenshots, PDFs, text, audio, or video with a reviewed conversation. Choose each attachment explicitly. By default Beam keeps each file’s original bytes, including embedded metadata. Check the files as well as the messages before sharing.
 
 ```sh
 beam bundle create task.beam.json --attach screenshot.png --attach brief.pdf --out task.beam.zip
@@ -98,6 +98,8 @@ Open `task.html` to see the conversation and its media offline. Send the ZIP to 
 beam bundle create task.beam.json --attach screenshot.png --out screenshot.beam.zip
 beam share screenshot.beam.zip --to https://gateway.example
 ```
+
+On builds that list `strip-png-metadata` under `bundleTransforms` in `beam capabilities --json`, add `--strip-png-metadata` to either create command to remove embedded metadata from static PNGs. Preview the resulting bundle before sharing. The flag keeps filenames and leaves other file types as selected. For Beam v0.2.0, install the newer CLI with `go install github.com/openclaw/beam/cmd/beam@main` to use this option.
 
 Other bundle types travel as a ZIP. On a text-only Gateway, share the reviewed packet and send the ZIP separately. [View the example](https://openclaw.github.io/beam/example.html) · [Bundle format and limits](docs/standalone-beam.md#portable-asset-bundles)
 

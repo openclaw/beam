@@ -23,10 +23,10 @@ func TestShareReviewedScreenshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	file := filepath.Join(dir, "review.png")
-	if err := os.WriteFile(file, pngBytes.Bytes(), 0600); err != nil {
+	if err := os.WriteFile(file, append(bytes.Clone(pngBytes.Bytes()), []byte("private trailer")...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	archive, _, err := bundle.Create(raw, []string{file})
+	archive, _, err := bundle.Create(raw, bundle.CreateOptions{Paths: []string{file}, StripPNGMetadata: true})
 	if err != nil {
 		t.Fatal(err)
 	}

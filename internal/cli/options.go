@@ -18,7 +18,7 @@ type options struct {
 }
 
 var optionsFor = map[string]string{
-	"bundle create": "attach out expect-digest json", "bundle inspect": "expect-digest json", "bundle preview": "out expect-digest json",
+	"bundle create": "attach strip-png-metadata out expect-digest json", "bundle inspect": "expect-digest json", "bundle preview": "out expect-digest json",
 	"capabilities": "json", "doctor": "json adapter profile-dir endpoint", "adapter": "in adapter profile-dir endpoint",
 	"list": "from cursor limit json adapter profile-dir endpoint", "pack": "from session branch out omit redact json adapter profile-dir endpoint",
 	"adapter test": "in adapter fixture session mode out state json profile-dir endpoint",
@@ -51,7 +51,7 @@ func parseOptions(cmd string, args []string) (options, error) {
 		if !allowed[name] {
 			return o, fmt.Errorf("unknown --%s for %s", name, cmd)
 		}
-		if name == "json" || name == "dry-run" {
+		if name == "json" || name == "dry-run" || name == "strip-png-metadata" {
 			if equals {
 				return o, fmt.Errorf("--%s takes no value", name)
 			}

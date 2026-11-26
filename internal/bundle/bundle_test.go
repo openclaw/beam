@@ -28,7 +28,7 @@ func TestBundleRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := filepath.Join("..", "..", "site", "beam-cover.webp")
-	blob, m, err := Create(raw, []string{image, doc})
+	blob, m, err := Create(raw, CreateOptions{Paths: []string{image, doc}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestBundleRoundTrip(t *testing.T) {
 			t.Fatalf("missing preview content %q", want)
 		}
 	}
-	again, _, err := Create(raw, []string{image, doc})
+	again, _, err := Create(raw, CreateOptions{Paths: []string{image, doc}})
 	if err != nil || !bytes.Equal(again, blob) {
 		t.Fatal("unstable bundle for identical inputs")
 	}
@@ -129,7 +129,7 @@ func TestSelectionLimits(t *testing.T) {
 	}
 	f.Close()
 	for _, paths := range [][]string{nil, make([]string, MaxAssets+1), {dir}, {large}} {
-		if _, _, err := Create(raw, paths); err == nil {
+		if _, _, err := Create(raw, CreateOptions{Paths: paths}); err == nil {
 			t.Fatal("accepted invalid selection")
 		}
 	}

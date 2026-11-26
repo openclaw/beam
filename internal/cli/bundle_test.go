@@ -2,14 +2,82 @@ package cli
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"html"
+	"image"
+	"image/png"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/openclaw/beam/internal/bundle"
 	"github.com/openclaw/beam/internal/packet"
 )
+
+func runBundleCLI(t *testing.T, input string, args ...string) []byte {
+	t.Helper()
+	code, out, stderr := invoke(t, App{}, input, args...)
+	if code != 0 {
+		t.Fatalf("%v: %s %s", args, stderr, out)
+	}
+	return out
+}
+
+func TestBundleStripPNGMetadata(t *testing.T) {
+	dir := t.TempDir()
+	var imageBytes bytes.Buffer
+	if err := png.Encode(&imageBytes, image.NewGray(image.Rect(0, 0, 2, 1))); err != nil {
+		t.Fatal(err)
+	}
+	source := append(bytes.Clone(imageBytes.Bytes()), "unreviewed trailer"...)
+	path := filepath.Join(dir, "selected.image")
+	if err := os.WriteFile(path, source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	note := filepath.Join(dir, "note.txt")
+	if err := os.WriteFile(note, []byte("exact notes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	raw := runBundleCLI(t, "message", "pack", "--from", "file", "--session", "-")
+	for _, strip := range []bool{false, true} {
+		args := []string{"bundle", "create", "-", "--attach", path, "--attach", note, "--out", "-"}
+		expected := source
+		if strip {
+			args = append(args, "--strip-png-metadata")
+			expected = imageBytes.Bytes()
+		}
+		z := runBundleCLI(t, string(raw), args...)
+		b, err := bundle.Read(z)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assets := b.Manifest.Assets
+		if !bytes.Equal(b.PacketBytes, raw) || len(assets) != 2 || assets[0].Name != "selected.image" || assets[0].Digest != packet.Digest(expected) || assets[1].Digest != packet.Digest([]byte("exact notes")) {
+			t.Fatal("wrong reviewed bundle contents")
+		}
+		page := runBundleCLI(t, string(z), "bundle", "preview", "-", "--out", "-")
+		if !strings.Contains(html.UnescapeString(string(page)), "data:image/png;base64,"+base64.StdEncoding.EncodeToString(expected)) {
+			t.Fatal("preview disagrees with reviewed bytes")
+		}
+	}
+	if got, err := os.ReadFile(path); err != nil || !bytes.Equal(got, source) {
+		t.Fatal("source modified")
+	}
+	if err := os.WriteFile(path, source[:20], 0600); err != nil {
+		t.Fatal(err)
+	}
+	dst := filepath.Join(dir, "existing.zip")
+	if err := os.WriteFile(dst, []byte("existing"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, _ := invoke(t, App{}, string(raw), "bundle", "create", "-", "--attach", path, "--strip-png-metadata", "--out", dst)
+	if got, err := os.ReadFile(dst); code == 0 || len(out) != 0 || err != nil || string(got) != "existing" {
+		t.Fatal("failed cleaning replaced output")
+	}
+}
 
 func TestBundleCLI(t *testing.T) {
 	dir := t.TempDir()
@@ -18,20 +86,13 @@ func TestBundleCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := App{}
-	run := func(input string, args ...string) []byte {
-		t.Helper()
-		code, out, stderr := invoke(t, a, input, args...)
-		if code != 0 {
-			t.Fatalf("%v: %s %s", args, stderr, out)
-		}
-		return out
-	}
-	raw := run("message", "pack", "--from", "file", "--session", "-")
+
+	raw := runBundleCLI(t, "message", "pack", "--from", "file", "--session", "-")
 	for _, version := range []string{"1", "2"} {
 		t.Run(version, func(t *testing.T) {
-			selected := run(string(raw), "convert", "-", "--packet-version", version)
-			z := run(string(selected), "bundle", "create", "-", "--attach", note, "--out", "-", "--expect-digest", packet.Digest(selected))
-			out := run(string(z), "bundle", "inspect", "-", "--json", "--expect-digest", packet.Digest(z))
+			selected := runBundleCLI(t, string(raw), "convert", "-", "--packet-version", version)
+			z := runBundleCLI(t, string(selected), "bundle", "create", "-", "--attach", note, "--out", "-", "--expect-digest", packet.Digest(selected))
+			out := runBundleCLI(t, string(z), "bundle", "inspect", "-", "--json", "--expect-digest", packet.Digest(z))
 			var reply struct {
 				OK     bool
 				Result struct {
@@ -42,7 +103,7 @@ func TestBundleCLI(t *testing.T) {
 			if json.Unmarshal(out, &reply) != nil || !reply.OK || reply.Result.BundleDigest != packet.Digest(z) || reply.Result.Manifest.PacketDigest != packet.Digest(selected) {
 				t.Fatal(string(out))
 			}
-			page := run(string(z), "bundle", "preview", "-", "--out", "-")
+			page := runBundleCLI(t, string(z), "bundle", "preview", "-", "--out", "-")
 			if !bytes.Contains(page, []byte("note.txt")) {
 				t.Fatal("preview missing asset")
 			}
