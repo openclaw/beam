@@ -43,7 +43,7 @@
             </div>
             <div class="cmd">
               <p id="panel-cli" role="tabpanel" aria-labelledby="tab-cli">npx skills add openclaw/beam</p>
-              <p id="panel-agent" class="prompt" role="tabpanel" aria-labelledby="tab-agent" hidden>Set up Beam for me: install the beam CLI from github.com/openclaw/beam/releases/tag/v0.1.0, run beam doctor --json, then npx skills add openclaw/beam. When I ask you to beam a session, follow the Beam skill and show me the packet first.</p>
+              <p id="panel-agent" class="prompt" role="tabpanel" aria-labelledby="tab-agent" hidden>Set up Beam for me: install the beam CLI from github.com/openclaw/beam/releases/latest, run beam doctor --json, then npx skills add openclaw/beam. When I ask you to beam a session, follow the Beam skill and show me the packet first.</p>
               <button type="button" class="copy" aria-live="polite">copy</button>
             </div>
           </div>
@@ -214,7 +214,6 @@
             <h2 id="review-title">You see the packet first</h2>
             <p class="section-lede">The packet carries the visible messages, nothing else. Private details Beam recognizes are already swapped out. If you spot something it missed, write a new packet without that message.</p>
             <p class="mono" style="color: var(--soft)">beam review reviewed.beam.json --omit 3 --expect-digest "$DIGEST" --out final.beam.json</p>
-            <p><span class="main-only">beam review is on main, newer than v0.1.0</span></p>
           </div>
           <div class="window">
             <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">example redaction</h3></div>
@@ -239,7 +238,7 @@
           <div class="window">
             <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">share to OpenClaw</h3></div>
             <div class="body">
-              <p>Install <a href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Beam v0.1.0</a> and set <code>BEAM_AUTH_TOKEN</code> to a Gateway credential allowed to publish. Sharing starts no model turn.</p>
+              <p>Install <a href="https://github.com/openclaw/beam/releases/latest">the latest Beam release</a> and set <code>BEAM_AUTH_TOKEN</code> to a Gateway credential allowed to publish. Sharing starts no model turn.</p>
               <pre class="mono code"><span class="comment"># OpenClaw 2026.11.10 reads v1 packets</span>
 beam convert reviewed.beam.json \
   --packet-version 1 --out task.v1.json
@@ -281,7 +280,6 @@ openclaw gateway restart</pre>
           <div class="split-copy">
             <h2 id="files-title">Bring the files, too</h2>
             <p class="section-lede">A portable bundle carries the reviewed conversation and the images, documents, audio or video you pick. Open the preview offline, or extract the original files from the ZIP.</p>
-            <p><span class="main-only">Bundles are on main, newer than v0.1.0</span></p>
           </div>
           <div class="window">
             <div class="titlebar"><span class="dots"><i></i><i></i><i></i></span><h3 class="wt">beam bundle</h3></div>
@@ -367,7 +365,7 @@ beam bundle preview task.beam.zip --out task.html</pre>
               <a href="https://github.com/openclaw/beam/blob/main/LICENSE">License</a>
               <a href="https://github.com/openclaw/beam/tree/main/schema">Schemas</a>
               <a href="https://github.com/openclaw/beam/blob/main/docs/standalone-beam.md">Protocol</a>
-              <a href="https://github.com/openclaw/beam/releases/tag/v0.1.0">Download v0.1.0</a>
+              <a href="https://github.com/openclaw/beam/releases/latest">Download Beam</a>
             </nav>
           </div>
         </div>
@@ -377,7 +375,7 @@ beam bundle preview task.beam.zip --out task.html</pre>
     <footer>
       <p>Beam is an OpenClaw project.</p>
       <nav aria-label="Resources">
-        <a href="https://github.com/openclaw/beam#on-the-main-branch">Tools on main</a>
+        <a href="https://github.com/openclaw/beam#review-and-plan-a-handoff">Review and plan a handoff</a>
         <a href="https://github.com/openclaw/beam/blob/main/integrations/skill/SKILL.md">Agent skill</a>
         <a href="https://github.com/openclaw/beam/tree/main/site/marks">Logo credits</a>
       </nav>
