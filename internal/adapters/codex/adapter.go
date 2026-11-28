@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/openclaw/beam/internal/adapters/native"
 	"github.com/openclaw/beam/internal/adapters/nativepage"
 	"github.com/openclaw/beam/internal/clean"
+	"github.com/openclaw/beam/internal/packet"
 )
 
 type Adapter struct{}
@@ -124,7 +126,15 @@ func (Adapter) Call(ctx context.Context, r adapter.Request) (any, error) {
 		if r.Op == "resolve" {
 			return ready(id), nil
 		}
-		return read(got.Thread, r)
+		goal, err := readGoal(c, id)
+		var rpcErr *rpcError
+		// Codex 0.172.0 exposes a disabled optional goal feature as this
+		// invalid-request response. Preserve the transcript and report the gap.
+		disabled := errors.As(err, &rpcErr) && rpcErr.Code == -32600 && rpcErr.Message == "goals feature is disabled"
+		if err != nil && !disabled {
+			return nil, adapter.Fail("unavailable", "never", "Codex could not read the selected thread's goal; check that goals are enabled")
+		}
+		return read(got.Thread, r, goal, disabled)
 	}
 }
 func (t thread) title() string {
@@ -156,6 +166,14 @@ func openCopy(ctx context.Context, c *client, r adapter.Request) (any, error) {
 	if err := c.call("thread/name/set", obj{"threadId": id, "name": r.Packet.Title}, nil); err != nil {
 		return uncertain(r.OperationID, id), nil
 	}
+	goal := copiedGoal(r.Packet.Goal)
+	if goal != nil {
+		// Opening a reference must stay passive. Active goals immediately run in
+		// Codex; a fresh paused goal preserves intent without replaying authority.
+		if err := c.call("thread/goal/set", obj{"threadId": id, "objective": goal.Objective, "status": goal.Status, "tokenBudget": goal.TokenBudget}, nil); err != nil {
+			return uncertain(r.OperationID, id), nil
+		}
+	}
 	// Reopen through a separate app-server process. An in-memory ID can exist
 	// before the rollout file does; the raw injected reference is absent from UI turns.
 	c.close()
@@ -172,7 +190,58 @@ func openCopy(ctx context.Context, c *client, r adapter.Request) (any, error) {
 	if !reflect.DeepEqual(wanted, got) {
 		return uncertain(r.OperationID, id), nil
 	}
-	return ready(id), nil
+	if goal != nil {
+		persistedGoal, err := readGoal(probe, id)
+		if err != nil || !reflect.DeepEqual(goal, persistedGoal) {
+			return uncertain(r.OperationID, id), nil
+		}
+	}
+	result := ready(id)
+	if r.Packet.Goal != nil {
+		if goal == nil {
+			result.NextAction += " The source goal's token budget is exhausted; its goal remains in the reference. Set a new native goal with an explicit budget to continue."
+		} else {
+			result.NextAction += " The copied /goal is paused with fresh usage counters and the source's remaining token budget. Review it, then run /goal resume explicitly."
+		}
+	}
+	return result, nil
+}
+
+func readGoal(c *client, id string) (*packet.Goal, error) {
+	var result struct {
+		Goal *struct {
+			packet.Goal
+			ThreadID string `json:"threadId"`
+		} `json:"goal"`
+	}
+	if err := c.call("thread/goal/get", obj{"threadId": id}, &result); err != nil {
+		return nil, err
+	}
+	if result.Goal == nil {
+		return nil, nil
+	}
+	if result.Goal.ThreadID != id {
+		return nil, fmt.Errorf("Codex returned a goal for another thread")
+	}
+	goal := result.Goal.Goal
+	return &goal, goal.Validate()
+}
+
+func copiedGoal(source *packet.Goal) *packet.Goal {
+	if source == nil {
+		return nil
+	}
+	goal := &packet.Goal{Objective: source.Objective, Status: "paused"}
+	if source.TokenBudget != nil {
+		remaining := *source.TokenBudget - source.TokensUsed
+		// Codex rejects zero budgets. Keep exhausted goals as reference instead
+		// of silently granting them a new allowance on another machine.
+		if remaining <= 0 {
+			return nil
+		}
+		goal.TokenBudget = &remaining
+	}
+	return goal
 }
 
 func persistedReference(t thread) []block {
@@ -209,7 +278,7 @@ func persistedReference(t thread) []block {
 	}
 	return nil
 }
-func read(t thread, r adapter.Request) (any, error) {
+func read(t thread, r adapter.Request, goal *packet.Goal, goalUnavailable bool) (any, error) {
 	home := os.Getenv("CODEX_HOME")
 	if home == "" {
 		h, e := os.UserHomeDir()
@@ -223,7 +292,16 @@ func read(t thread, r adapter.Request) (any, error) {
 		return nil, err
 	}
 	res := clean.Candidate{Source: bin, Origin: clean.Origin{Adapter: bin, SourceHome: home, NativeSession: t.ID}, Title: t.title(), UpdatedAt: time.Unix(t.UpdatedAt, 0).UTC().Format(time.RFC3339), Completeness: "complete"}
-	res.Items = append(res.Items, native.ReferenceItems(persistedReference(t))...)
+	res.Goal = goal
+	reference := persistedReference(t)
+	res.Items = append(res.Items, native.ReferenceItems(reference)...)
+	if goal == nil {
+		if historical := native.ReferenceGoal(reference); historical != nil {
+			// A cleared or exhausted native goal must not be recreated on export.
+			// Retain the imported snapshot as history, without executable metadata.
+			res.Items = append(res.Items, clean.Item{Type: "other", Text: "Historical goal (reference only):\n" + historical.ReferenceText()})
+		}
+	}
 	for _, turn := range t.Turns {
 		if turn.ItemsView == "notLoaded" || turn.ItemsView == "summary" {
 			res.Completeness = "partial"
@@ -245,7 +323,12 @@ func read(t thread, r adapter.Request) (any, error) {
 			}
 		}
 	}
-	page, next, err := nativepage.Slice(t.ID+" "+res.UpdatedAt, res.Items, r.Cursor, r.Limit)
+	if goalUnavailable {
+		res.Completeness = "partial"
+		res.Items = append(res.Items, clean.Item{Type: "other", Text: "Codex goal metadata was not exported because the source disabled goals. Enable the Codex goals feature and export again if this thread has a goal to preserve."})
+	}
+	goalRevision, _ := json.Marshal(goal)
+	page, next, err := nativepage.Slice(t.ID+" "+res.UpdatedAt+" "+string(goalRevision), res.Items, r.Cursor, r.Limit)
 	if err != nil {
 		return nil, err
 	}

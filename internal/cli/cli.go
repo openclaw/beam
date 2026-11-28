@@ -185,7 +185,7 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 	case "capabilities":
 		info := map[string]any{
 			"version": a.Version, "cliProtocol": 1, "adapterProtocol": 1, "adapters": keys(reg),
-			"packetVersions": []int{1, 2}, "bundleVersions": []int{1},
+			"packetVersions": []int{1, 2, 3}, "bundleVersions": []int{1},
 			"bundleTransforms": []string{"strip-png-metadata"},
 		}
 		if a.Legacy != nil {
@@ -284,12 +284,11 @@ func (a App) execute(ctx context.Context, cmd string, o options, reg Registry, i
 		if cmd == "convert" {
 			var outBytes []byte
 			switch o.values["packet-version"] {
-			case "1":
-				outBytes, err = packet.V1Projection(p)
-			case "2":
-				outBytes, err = packet.Marshal(p)
+			case "1", "2", "3":
+				version, _ := strconv.Atoi(o.values["packet-version"])
+				outBytes, err = packet.Projection(p, version)
 			default:
-				return nil, fmt.Errorf("choose --packet-version 1 or 2")
+				return nil, fmt.Errorf("choose --packet-version 1, 2, or 3")
 			}
 			if err != nil {
 				return nil, err

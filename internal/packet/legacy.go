@@ -55,11 +55,33 @@ func V1Projection(p Packet) ([]byte, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
+	if p.Goal != nil {
+		return nil, errors.New("packet version 1 cannot preserve a goal; use packet version 3")
+	}
 	old := Legacy{Version: 1, BeamID: p.BeamID, Source: p.Source, Title: p.Title, UpdatedAt: p.UpdatedAt, Completed: p.Completed, Truncated: p.Truncated, SourceModel: p.SourceModel}
 	for _, i := range p.Items {
 		old.Items = append(old.Items, LegacyItem{Type: i.Type, Text: i.Text})
 	}
 	return marshalBounded(old, errors.New("v1 projection exceeds 56 KiB"))
+}
+
+// Projection changes only the reviewed wire version. A goal cannot disappear
+// during conversion to a receiver that does not support it.
+func Projection(p Packet, version int) ([]byte, error) {
+	if version == 1 {
+		return V1Projection(p)
+	}
+	if err := p.Validate(); err != nil {
+		return nil, err
+	}
+	if version != 2 && version != 3 {
+		return nil, errors.New("packet version must be 1, 2, or 3")
+	}
+	if version == 2 && p.Goal != nil {
+		return nil, errors.New("packet version 2 cannot preserve a goal; use packet version 3")
+	}
+	p.Version = version
+	return Marshal(p)
 }
 
 // LegacySourceID preserves links produced by the released agent-skills CLI.

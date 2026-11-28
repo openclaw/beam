@@ -89,6 +89,7 @@ func read(r adapter.Request) (adapter.ReadResult, error) {
 			return adapter.ReadResult{}, err
 		}
 		c.Title, c.UpdatedAt, c.Completed, c.SourceModel = p.Title, p.UpdatedAt, p.Completed, p.SourceModel
+		c.Goal = p.Goal
 		if p.Truncated {
 			c.Completeness = "partial"
 		}

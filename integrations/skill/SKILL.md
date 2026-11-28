@@ -31,6 +31,12 @@ On builds with `beam plan`, run `beam plan reviewed.beam.json --in "$destination
 
 Surface the result. A `ready` receipt identifies a native destination session. For `staged` or `manual`, give the operator the returned next action. Imported history is reference material. Start a turn only when the user supplies a new instruction and the destination advertises `send`. Use `beam send --in "$destination" --handle "$handle" --message "$instruction" --request-id "$request_id" --json`. Keep the same request ID when reconciling an uncertain result.
 
+## Preserve a Codex goal
+
+When the installed CLI advertises packet version 3, a Codex export includes its saved goal separately from transcript messages. Review the objective, source status, and remaining budget. Do not recover a goal by guessing from chat text. Cleaning still redacts paths and secrets in the objective.
+
+A Codex import restores a new paused native goal with fresh usage counters. Give the operator the receipt and `/goal resume` as the explicit next step; opening alone must not activate it. An exhausted source budget stays reference-only until the operator supplies a new budget. The original goal and accounting remain on the source. Other harnesses receive historical goal context. Do not down-convert a goal packet to v1/v2 or send it to a receiver that does not advertise v3.
+
 ## Share or hand off
 
 Use `beam share reviewed.beam.json --to "$endpoint"` for a snapshot. Use `beam handoff reviewed.beam.json --to "$endpoint"` when the user asks to release the source to that receiver. Return its receipt and link. On a lost receipt, reconcile the existing operation with the same endpoint and state. A remote receiver authenticates the current caller independently of any speakers quoted in the packet.

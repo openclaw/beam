@@ -147,6 +147,9 @@
         "nextCursor": {
           "type": "string",
           "minLength": 1
+        },
+        "goal": {
+          "$ref": "packet-candidate-v1.schema.json#/properties/goal"
         }
       }
     },

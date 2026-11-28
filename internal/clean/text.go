@@ -100,12 +100,27 @@ func cleanText(s string, mask *regexp.Regexp, r *Report) string {
 }
 
 func cleanPaths(s string, r *Report) string {
-	s = quotedPath.ReplaceAllStringFunc(s, func(string) string { r.Redactions++; return "[LOCAL_PATH]" })
-	return localPath.ReplaceAllStringFunc(s, func(v string) string {
+	s = quotedPath.ReplaceAllStringFunc(s, func(v string) string {
+		// Codex's /goal is a command, not an absolute path. Keep its quoted
+		// arguments available to the ordinary path and secret filters.
+		if goalCommand(v[1 : len(v)-1]) {
+			return v
+		}
 		r.Redactions++
+		return "[LOCAL_PATH]"
+	})
+	return localPath.ReplaceAllStringFunc(s, func(v string) string {
 		m := localPath.FindStringSubmatch(v)
+		if v[len(m[1]):] == "/goal" {
+			return v
+		}
+		r.Redactions++
 		return m[1] + "[LOCAL_PATH]"
 	})
+}
+
+func goalCommand(s string) bool {
+	return s == "/goal" || strings.HasPrefix(s, "/goal ") || strings.HasPrefix(s, "/goal\n") || strings.HasPrefix(s, "/goal\t")
 }
 
 func unsafeQuery(u *url.URL) bool {

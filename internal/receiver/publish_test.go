@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -48,6 +49,28 @@ func acceptPublish(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		Digest: packet.Digest(body), Disposition: "applied", CanRelease: true,
 		URL: "/beam/" + fixtureID, APIURL: v2Path + "/publications/one",
 	})
+}
+
+func TestGoalPacketRequiresAdvertisedVersionBeforePublishing(t *testing.T) {
+	srv := publishPeer(t, func(w http.ResponseWriter, r *http.Request) { t.Error("published unsupported goal packet") })
+	p, err := packet.Parse(fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Version, p.Goal = 3, &packet.Goal{Objective: "repair", Status: "paused"}
+	raw, err := packet.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := filepath.Join(t.TempDir(), "journal.sqlite")
+	c := clientFor(t, srv.URL, state)
+	defer c.Close()
+	if _, err := c.Share(t.Context(), raw); err == nil || !strings.Contains(err.Error(), "unsupported_packet_version") {
+		t.Fatal("unsupported version accepted", err)
+	}
+	if _, err := os.Stat(state); !os.IsNotExist(err) {
+		t.Fatal("unsupported version wrote journal state", err)
+	}
 }
 
 func TestIncompleteFirstPublishPreservesLegacyRetry(t *testing.T) {
