@@ -101,10 +101,11 @@ func cleanText(s string, mask *regexp.Regexp, r *Report) string {
 
 func cleanPaths(s string, r *Report) string {
 	s = quotedPath.ReplaceAllStringFunc(s, func(v string) string {
-		// Codex's /goal is a command, not an absolute path. Keep its quoted
-		// arguments available to the ordinary path and secret filters.
-		if goalCommand(v[1 : len(v)-1]) {
-			return v
+		quoted := v[1 : len(v)-1]
+		if goalCommand(quoted) {
+			// The outer quotes enclose the command. Its arguments can have
+			// their own quoted paths, including paths containing spaces.
+			return v[:1] + "/goal" + cleanPaths(quoted[len("/goal"):], r) + v[len(v)-1:]
 		}
 		r.Redactions++
 		return "[LOCAL_PATH]"

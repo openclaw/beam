@@ -180,6 +180,8 @@ func TestGoalCommandSurvivesPathCleaning(t *testing.T) {
 		{"resume /goal after review", "resume /goal after review"},
 		{`"/goal repair the importer"`, `"/goal repair the importer"`},
 		{"'/goal read /private/fixture'", "'/goal read [LOCAL_PATH]'"},
+		{`"/goal read '/example project/notes.txt' before lunch"`, `"/goal read [LOCAL_PATH] before lunch"`},
+		{`'/goal review "C:\sample files\draft.txt" and "./next steps.md"'`, `'/goal review [LOCAL_PATH] and [LOCAL_PATH]'`},
 		{"/goal read /Users/example/task and /goal/private", "/goal read [LOCAL_PATH] and [LOCAL_PATH]"},
 		{`"/goal/private" and /Users and /private`, `[LOCAL_PATH] and [LOCAL_PATH] and [LOCAL_PATH]`},
 	} {
