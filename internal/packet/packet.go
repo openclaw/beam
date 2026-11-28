@@ -16,10 +16,12 @@ import (
 )
 
 const (
-	MaxBytes      = 56 * 1024
-	MaxItems      = 200
-	MaxItemChars  = 6000
-	MaxTitleChars = 160
+	MaxBytes       = 56 * 1024
+	MaxItems       = 200
+	MaxItemChars   = 6000
+	MaxTitleChars  = 160
+	MaxGoalChars   = 4000
+	MaxSafeInteger = int64(9007199254740991)
 )
 
 type Packet struct {
@@ -31,7 +33,41 @@ type Packet struct {
 	Completed   bool   `json:"completed"`
 	Truncated   bool   `json:"truncated,omitempty"`
 	SourceModel *Model `json:"sourceModel,omitempty"`
+	Goal        *Goal  `json:"goal,omitempty"`
 	Items       []Item `json:"items"`
+}
+
+// Goal is portable task intent. Native goal identity and usage accounting stay
+// with the source; tokensUsed only determines the remaining copied budget.
+type Goal struct {
+	Objective   string `json:"objective"`
+	Status      string `json:"status"`
+	TokenBudget *int64 `json:"tokenBudget,omitempty"`
+	TokensUsed  int64  `json:"tokensUsed"`
+}
+
+func (g Goal) Validate() error {
+	if !utf8.ValidString(g.Objective) || IsBlank(g.Objective) || utf8.RuneCountInString(g.Objective) > MaxGoalChars {
+		return errors.New("goal objective must contain 1 to 4000 Unicode characters")
+	}
+	switch g.Status {
+	case "active", "paused", "blocked", "usageLimited", "budgetLimited", "complete":
+	default:
+		return errors.New("invalid goal status")
+	}
+	if g.TokensUsed < 0 || g.TokensUsed > MaxSafeInteger || g.TokenBudget != nil && (*g.TokenBudget < 1 || *g.TokenBudget > MaxSafeInteger) {
+		return errors.New("goal token counters must be safe nonnegative integers and budget must be positive")
+	}
+	return nil
+}
+
+// ReferenceText describes source state without authorizing a destination run.
+func (g Goal) ReferenceText() string {
+	text := fmt.Sprintf("/goal %s\nSource status: %s\nTokens used at source: %d", g.Objective, g.Status, g.TokensUsed)
+	if g.TokenBudget != nil {
+		text += fmt.Sprintf("\nSource token budget: %d", *g.TokenBudget)
+	}
+	return text
 }
 
 type Model struct {
@@ -99,8 +135,16 @@ func validText(s string, limit int) bool {
 }
 
 func (p Packet) Validate() error {
-	if p.Version != 2 {
+	if p.Version != 2 && p.Version != 3 {
 		return errors.New("unsupported packet version")
+	}
+	if p.Goal != nil {
+		if p.Version != 3 {
+			return errors.New("goals require packet version 3")
+		}
+		if err := p.Goal.Validate(); err != nil {
+			return err
+		}
 	}
 	if !id.MatchString(p.BeamID) || len(p.Source) > 32 || !identifier.MatchString(p.Source) {
 		return errors.New("invalid packet identity")
@@ -215,6 +259,9 @@ func Render(p Packet) string {
 		b.WriteByte('\n')
 	}
 	quote("Title", "", p.Title)
+	if g := p.Goal; g != nil {
+		quote("Historical goal (reference only)", "", g.ReferenceText())
+	}
 	for _, item := range p.Items {
 		label := map[string]string{"userMessage": "User", "agentMessage": "Assistant", "other": "Activity"}[item.Type]
 		quote(label, item.Speaker, item.Text)

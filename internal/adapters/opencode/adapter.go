@@ -206,6 +206,7 @@ func read(ctx context.Context, s *server, t session, r adapter.Request) (any, er
 		if msg.Info.Role == "user" {
 			if rows := native.ReferenceItems(blocks); rows != nil {
 				candidate.Items = append(candidate.Items, rows...)
+				candidate.Goal = native.ReferenceGoal(blocks)
 				continue
 			}
 		}

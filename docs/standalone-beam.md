@@ -89,7 +89,7 @@ The public page needs the install command, two-harness walkthrough, synthetic cl
 
 ## Portable asset bundles
 
-A `.beam.zip` travels as an ordinary file. Use a single-disk ZIP32 archive without an archive comment. Store all members uncompressed. The central directory limit is 16 KiB. At the archive root, `packet.beam.json` holds the exact reviewed v1 or v2 packet and `manifest.json` follows the [v1 bundle schema](../schema/bundle-v1.schema.json). The packet retains its original SHA-256. The bundle digest covers the complete ZIP, including the manifest and all attachments.
+A `.beam.zip` travels as an ordinary file. Use a single-disk ZIP32 archive without an archive comment. Store all members uncompressed. The central directory limit is 16 KiB. At the archive root, `packet.beam.json` holds the exact reviewed v1, v2, or v3 packet and `manifest.json` follows the [v1 bundle schema](../schema/bundle-v1.schema.json). The packet retains its original SHA-256. The bundle digest covers the complete ZIP, including the manifest and all attachments.
 
 Each attachment has a display filename, media type, byte count, SHA-256 and a generated path such as `assets/01.png`. Number paths in manifest order, starting at 01. Use only the listed regular files. A bundle contains 1–16 attachments, up to 16 MiB each and 32 MiB combined. The manifest limit is 16 KiB. The full archive limit is 32 MiB plus 128 KiB. The existing packet limit is 56 KiB.
 
@@ -149,6 +149,16 @@ type PacketV2 = {
 - Clean before fitting to the wire limit. Drop oldest items first to retain recent work, clip an oversized remaining item at a scalar boundary, and set `truncated`. Reject a result with no shareable content. Report redactions, omissions, lossy conversions and truncation separately from the file. `inspect` reads the exact file to be sent. Publishing reviewed v2 bytes must not silently reserialize or down-convert them. Materialize and review a v1 projection separately when required.
 
 Existing numeric limits and item types come from the [v1 parser](https://github.com/openclaw/openclaw/blob/b9ef0d7fca28cfea8dec4472d4527d98c40d7ba2/extensions/beam/src/types.ts#L18-L85). Two regression vectors come from the [filename placeholder](https://github.com/openclaw/agent-skills/blob/1fa548f4ad814f0f8401623c37c9d4b61e050173/skills/beam/scripts/beam-session.js#L720-L735) and the [automatic mirror's visible-text behavior](https://github.com/openclaw/openclaw/blob/b9ef0d7fca28cfea8dec4472d4527d98c40d7ba2/docs/plugins/beam.md#L204-L216).
+
+### Goal packets (v3)
+
+[V3 packets](../schema/packet-v3.schema.json) add optional `goal` metadata to the v2 fields. Existing v1/v2 files retain their format. A goal contains `objective`, `status`, `tokensUsed`, and optional `tokenBudget`. Status is `active`, `paused`, `blocked`, `usageLimited`, `budgetLimited`, or `complete`. The objective is nonblank and at most 4,000 Unicode scalar characters, matching Codex's native limit. Counters are nonnegative safe integers; a present budget is positive. Native thread IDs, goal IDs, timestamps, and credentials are excluded.
+
+Codex reads the selected thread's authoritative goal through `thread/goal/get`. Beam cleans its objective, preserves it outside transcript-tail trimming, and emits v3 only when a goal is present. An objective is never silently clipped. A disabled Codex goals feature leaves transcript export available but marks it partial with a visible goal-metadata notice. Pagination binds the goal snapshot as well as the transcript.
+
+`beam review` and bundle previews display the goal. Other harnesses receive it as quoted historical reference. Codex `openCopy` creates a fresh paused goal through `thread/goal/set`, with zero local usage and the remaining source token budget. It verifies the saved goal through a second app-server process. The source goal is unchanged, and imported source status is reference information rather than authority to run. The user resumes explicitly with `/goal resume`. An exhausted source budget creates no native goal; the receipt instructs the user to set a new budget, and the source goal remains in the quoted reference.
+
+A receiver must advertise packet version 3 before receiving a v3 packet. Conversion to v1/v2 refuses to discard a goal. Use the reviewed v3 file directly with a compatible Beam build; there is no silent downgrade. Goal-free exports remain v2.
 
 ## CLI and third-party adapter contract
 

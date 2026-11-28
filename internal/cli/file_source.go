@@ -18,7 +18,7 @@ func repack(data []byte, opts clean.Options) (packet.Packet, []byte, clean.Repor
 	if err != nil {
 		return packet.Packet{}, nil, clean.Report{}, err
 	}
-	c := clean.Candidate{Source: p.Source, Origin: clean.Origin{Adapter: p.Source, SourceHome: "portable", NativeSession: p.BeamID}, Title: p.Title, UpdatedAt: p.UpdatedAt, Completed: p.Completed, SourceModel: p.SourceModel, Completeness: "complete"}
+	c := clean.Candidate{Source: p.Source, Origin: clean.Origin{Adapter: p.Source, SourceHome: "portable", NativeSession: p.BeamID}, Title: p.Title, UpdatedAt: p.UpdatedAt, Completed: p.Completed, SourceModel: p.SourceModel, Goal: p.Goal, Completeness: "complete"}
 	if p.Truncated {
 		c.Completeness = "partial"
 	}
@@ -30,6 +30,7 @@ func repack(data []byte, opts clean.Options) (packet.Packet, []byte, clean.Repor
 		return cleaned, nil, report, err
 	}
 	cleaned.BeamID = p.BeamID
+	cleaned.Version = p.Version
 	if _, err := packet.Parse(data); err == nil && reflect.DeepEqual(cleaned, p) {
 		return cleaned, data, report, nil
 	}

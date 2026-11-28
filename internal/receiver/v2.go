@@ -148,6 +148,9 @@ func (c *Client) sharePacket(ctx context.Context, caps Capabilities, data []byte
 	if err != nil {
 		return Publication{}, failure("invalid_packet", "never")
 	}
+	if !slices.Contains(caps.PacketVersions, p.Version) {
+		return Publication{}, failure("unsupported_packet_version", "never")
+	}
 	return c.publish(ctx, p.BeamID, data, packet.Digest(data), "", preservePreviewOnHandoff)
 }
 

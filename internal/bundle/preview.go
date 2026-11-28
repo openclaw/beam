@@ -34,7 +34,7 @@ var preview = template.Must(template.New("preview").Funcs(template.FuncMap{
 {{else if eq (kind .MediaType) "audio"}}<audio controls preload="none" src="{{.URL}}"></audio>
 {{else if eq (kind .MediaType) "video"}}<video controls preload="none" src="{{.URL}}"></video>
 {{else}}<a download="{{.Download}}" href="{{.URL}}">Save {{.Name}}</a>{{end}}</figure>{{end}}</section>
-<section><h2>Conversation</h2>{{range .Packet.Items}}<article><h3>{{speaker .Type}}{{if .Speaker}} · {{.Speaker}}{{end}}</h3><p>{{.Text}}</p></article>{{end}}</section></main></body></html>
+<section><h2>Conversation</h2>{{with .Packet.Goal}}<article><h3>Historical goal (reference only)</h3><p>{{.ReferenceText}}</p></article>{{end}}{{range .Packet.Items}}<article><h3>{{speaker .Type}}{{if .Speaker}} · {{.Speaker}}{{end}}</h3><p>{{.Text}}</p></article>{{end}}</section></main></body></html>
 `))
 
 func (b *Bundle) Preview() ([]byte, error) {

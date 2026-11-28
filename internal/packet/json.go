@@ -142,7 +142,7 @@ func checkValue(d *json.Decoder, v reflect.Value, nonempty bool) error {
 			return errors.New("expected JSON boolean")
 		}
 		v.SetBool(b)
-	case reflect.Int:
+	case reflect.Int, reflect.Int64:
 		n, ok := token.(json.Number)
 		if !ok {
 			return errors.New("expected JSON integer")

@@ -115,6 +115,14 @@ Other bundle types travel as a ZIP. On a text-only Gateway, share the reviewed p
 
 Run `beam open task.beam.json --in opencode` for a native copy, or `beam render task.beam.json` for Markdown. Beam cleans visible messages locally and can redact common secrets, email addresses, and local paths. Read the packet before sharing it. The [support matrix](https://openclaw.github.io/beam/#support) lists tested versions and what each destination can reopen.
 
+### Codex goals
+
+On `main`, Codex exports include the saved `/goal` objective, status, and token budget in a v3 packet. Review the goal alongside the messages with `beam review`. Path and secret cleaning still applies to the objective; `/goal` itself stays intact.
+
+Opening the packet in Codex creates a **new paused goal**, with fresh usage counters and the source's remaining token budget. Resume the returned session, review the goal, then run `/goal resume` when ready. The source goal and its accounting remain unchanged. An exhausted budget stays in the reference; the receipt asks you to set a new goal budget explicitly. Opening never starts model work.
+
+Other destinations receive the goal as historical context. V1/v2 receivers cannot accept goal metadata, and conversion refuses to discard it. Transfer the v3 file directly to a compatible Beam build. Sessions without a saved goal continue to export v2 packets. If Codex has disabled goals, Beam exports a partial transcript with a visible notice that goal metadata was unavailable.
+
 ## Review and plan a handoff
 
 ```sh

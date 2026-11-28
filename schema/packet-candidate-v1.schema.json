@@ -120,6 +120,9 @@
         "complete",
         "partial"
       ]
+    },
+    "goal": {
+      "$ref": "packet-v3.schema.json#/properties/goal"
     }
   }
 }

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"os/exec"
 	"sync"
@@ -66,8 +66,16 @@ type event struct {
 	Method string
 	Params json.RawMessage
 	Result json.RawMessage
-	Error  *struct{ Code int }
+	Error  *rpcError
 }
+
+type rpcError struct {
+	Code    int
+	Message string
+	method  string
+}
+
+func (e *rpcError) Error() string { return fmt.Sprintf("native request failed: %s", e.method) }
 
 func (c *client) next() (event, error) {
 	for c.out.Scan() {
@@ -104,7 +112,8 @@ func (c *client) call(method string, params any, out any) error {
 			continue
 		}
 		if ev.Error != nil {
-			return errors.New("native request failed: " + method)
+			ev.Error.method = method
+			return ev.Error
 		}
 		if out != nil {
 			return json.Unmarshal(ev.Result, out)

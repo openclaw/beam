@@ -173,3 +173,51 @@ func TestOverlappingLiteralRedactions(t *testing.T) {
 		t.Fatalf("unexpected literal projection %q, redactions=%d", p.Items[0].Text, r.Redactions)
 	}
 }
+
+func TestGoalCommandSurvivesPathCleaning(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{"/goal repair the importer", "/goal repair the importer"},
+		{"resume /goal after review", "resume /goal after review"},
+		{`"/goal repair the importer"`, `"/goal repair the importer"`},
+		{"'/goal read /private/fixture'", "'/goal read [LOCAL_PATH]'"},
+		{`"/goal read '/example project/notes.txt' before lunch"`, `"/goal read [LOCAL_PATH] before lunch"`},
+		{`'/goal review "C:\sample files\draft.txt" and "./next steps.md"'`, `'/goal review [LOCAL_PATH] and [LOCAL_PATH]'`},
+		{"/goal read /Users/example/task and /goal/private", "/goal read [LOCAL_PATH] and [LOCAL_PATH]"},
+		{`"/goal/private" and /Users and /private`, `[LOCAL_PATH] and [LOCAL_PATH] and [LOCAL_PATH]`},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			r := Report{}
+			if got := cleanText(tc.input, nil, &r); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGoalSurvivesTranscriptTrimming(t *testing.T) {
+	c := candidate()
+	for range 210 {
+		c.Items = append(c.Items, Item{Type: "userMessage", Text: strings.Repeat("x ", 2900)})
+	}
+	c.Goal = &packet.Goal{Objective: "/goal repair /private/fixture", Status: "active", TokensUsed: 40}
+	p, report, err := Build(c, Options{})
+	if err != nil || !report.Truncated || p.Version != 3 || p.Goal == nil || p.Goal.Objective != "/goal repair [LOCAL_PATH]" || p.Goal.TokensUsed != 40 {
+		t.Fatalf("goal lost during trim: %+v / %+v / %v", p.Goal, report, err)
+	}
+	if c.Goal.Objective != "/goal repair /private/fixture" {
+		t.Fatal("cleaning mutated the source goal")
+	}
+	c.Goal.Objective = strings.Repeat("x ", packet.MaxGoalChars)
+	if _, _, err := Build(c, Options{}); err == nil {
+		t.Fatal("silently clipped an oversized goal")
+	}
+}
+
+func TestGoalOnlySession(t *testing.T) {
+	c := candidate()
+	c.Goal = &packet.Goal{Objective: "repair the importer", Status: "active"}
+	p, _, err := Build(c, Options{})
+	if err != nil || p.Goal == nil || p.Goal.Objective != c.Goal.Objective || len(p.Items) != 1 {
+		t.Fatalf("goal-only export failed: %+v / %v", p, err)
+	}
+}

@@ -55,5 +55,5 @@ jobs:
           node-version: "24"
       - run: node schema/packet-generate.mjs --check
       - name: Compile the public validator with strict indexed access
-        run: npm exec --yes --package=typescript@6.0.3 -- tsc --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module ESNext --lib ES2022,DOM schema/packet-v2.ts
-      - run: node --test schema/packet-v2.test.mjs
+        run: npm exec --yes --package=typescript@6.0.3 -- tsc --noEmit --strict --noUncheckedIndexedAccess --target ES2022 --module ESNext --lib ES2022,DOM schema/packet-v2.ts schema/packet-v3.ts
+      - run: node --test schema/packet-v2.test.mjs schema/packet-v3.test.mjs

@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -40,7 +41,7 @@ func selected(ctx context.Context, a adapter.Adapter, selection string, opts cle
 		if cursor == "" {
 			source = page.Candidate
 		} else {
-			if page.Source != source.Source || page.Origin != source.Origin || page.Branch != source.Branch || page.UpdatedAt != source.UpdatedAt {
+			if page.Source != source.Source || page.Origin != source.Origin || page.Branch != source.Branch || page.UpdatedAt != source.UpdatedAt || !reflect.DeepEqual(page.Goal, source.Goal) {
 				return packet.Packet{}, report, adapter.Fail("source_changed", "never", "source changed during pagination; select it again")
 			}
 			source.Items = append(source.Items, page.Items...)

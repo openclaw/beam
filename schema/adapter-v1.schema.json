@@ -92,7 +92,14 @@
               "minLength": 1
             },
             "packet": {
-              "$ref": "packet-v2.schema.json"
+              "oneOf": [
+                {
+                  "$ref": "packet-v2.schema.json"
+                },
+                {
+                  "$ref": "packet-v3.schema.json"
+                }
+              ]
             }
           }
         },
@@ -113,7 +120,14 @@
               "minLength": 1
             },
             "packet": {
-              "$ref": "packet-v2.schema.json"
+              "oneOf": [
+                {
+                  "$ref": "packet-v2.schema.json"
+                },
+                {
+                  "$ref": "packet-v3.schema.json"
+                }
+              ]
             }
           }
         },

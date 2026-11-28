@@ -58,7 +58,10 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	if e.Code == "screenshot_unsupported" {
+	switch e.Code {
+	case "unsupported_packet_version":
+		return "This receiver does not support this packet version. Choose a compatible receiver (v3 for saved goals) or transfer the reviewed file directly."
+	case "screenshot_unsupported":
 		return "This receiver cannot publish screenshots. Send the reviewed ZIP separately or choose a receiver with screenshot support."
 	}
 	return "Beam receiver: " + e.Code

@@ -35,6 +35,7 @@ type Candidate struct {
 	UpdatedAt    string        `json:"updatedAt"`
 	Completed    bool          `json:"completed"`
 	SourceModel  *packet.Model `json:"sourceModel,omitempty"`
+	Goal         *packet.Goal  `json:"goal,omitempty"`
 	Items        []Item        `json:"items"`
 	Completeness string        `json:"completeness"`
 }
@@ -106,6 +107,16 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 	}
 	p := packet.Packet{Version: 2, BeamID: packet.SourceID(c.Origin.Adapter, c.Origin.SourceHome, c.Origin.NativeSession, c.Branch), Source: c.Source, Title: packet.Clip(title, packet.MaxTitleChars), UpdatedAt: c.UpdatedAt, Completed: c.Completed}
 	r.Truncated = c.Completeness == "partial" || p.Title != title
+	if c.Goal != nil {
+		goal := *c.Goal
+		goal.Objective = filter(goal.Objective)
+		// A clipped goal could authorize different work after resume. Reject it
+		// instead of applying transcript-tail truncation to the objective.
+		if err := goal.Validate(); err != nil {
+			return packet.Packet{}, r, err
+		}
+		p.Goal, p.Version = &goal, 3
+	}
 	if m := c.SourceModel; m != nil {
 		if filter(m.Provider) == m.Provider && filter(m.Model) == m.Model {
 			p.SourceModel = &packet.Model{Provider: m.Provider, Model: m.Model}
@@ -140,7 +151,10 @@ func Build(c Candidate, opts Options) (packet.Packet, Report, error) {
 		speakers = append(speakers, item.SpeakerID)
 	}
 	if len(p.Items) == 0 {
-		return packet.Packet{}, r, errors.New("no shareable content")
+		if p.Goal == nil {
+			return packet.Packet{}, r, errors.New("no shareable content")
+		}
+		p.Items = []packet.Item{{Type: "other", Text: "No shareable conversation messages were recorded; the saved goal is included separately."}}
 	}
 	if n := len(p.Items) - packet.MaxItems; n > 0 {
 		p.Items = p.Items[n:]

@@ -26,6 +26,11 @@ func review(p packet.Packet, raw []byte, o options, out io.Writer) (any, error) 
 				return nil, err
 			}
 		}
+		if p.Goal != nil {
+			if _, err := fmt.Fprintf(out, "goal: %q\n", p.Goal.ReferenceText()); err != nil {
+				return nil, err
+			}
+		}
 		for i, item := range p.Items {
 			if _, err := fmt.Fprintf(out, "%3d  %s %s  %q\n", i+1, item.Type, item.Speaker, item.Text); err != nil {
 				return nil, err

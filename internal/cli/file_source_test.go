@@ -25,6 +25,27 @@ func TestRepackPreservesReviewedBytesAndIdentity(t *testing.T) {
 	}
 }
 
+func TestGoalRepackAndReview(t *testing.T) {
+	raw := `{"version":3,"beamId":"0123456789abcdef0123456789abcdef","source":"codex","title":"repair","updatedAt":"2025-12-01T12:00:00Z","completed":false,"goal":{"objective":"repair the importer","status":"active","tokensUsed":40,"tokenBudget":100},"items":[{"type":"userMessage","text":"hello"}]}`
+	code, out, diag := invoke(t, App{}, raw, "pack", "--from", "file", "--session", "-")
+	if code != 0 || string(out) != raw {
+		t.Fatal(code, string(out), diag)
+	}
+	code, out, diag = invoke(t, App{}, raw, "review", "-")
+	if code != 0 || !strings.Contains(string(out), "/goal repair the importer") || !strings.Contains(string(out), "Source status: active") {
+		t.Fatal(code, string(out), diag)
+	}
+	code, _, diag = invoke(t, App{}, raw, "convert", "-", "--packet-version", "2")
+	if code == 0 || !strings.Contains(diag, "cannot preserve a goal") {
+		t.Fatal(code, diag)
+	}
+	unsafe := strings.Replace(raw, "repair the importer", `\u001b[2Jrepair`, 1)
+	code, out, diag = invoke(t, App{}, unsafe, "review", "-")
+	if code != 0 || bytes.Contains(out, []byte{0x1b}) || !strings.Contains(string(out), `\x1b`) {
+		t.Fatal("goal review emitted terminal control", code, string(out), diag)
+	}
+}
+
 func TestPacketReceiptMatchesBytesWrittenByCommand(t *testing.T) {
 	fixture := `{ "version":2,"beamId":"0123456789abcdef0123456789abcdef","source":"file","title":"A & B","updatedAt":"2025-12-01T12:00:00Z","completed":false,"items":[{"type":"userMessage","text":"hello"}] }`
 	for _, args := range [][]string{

@@ -43,6 +43,9 @@ func (c *Client) shareScreenshot(ctx context.Context, archive []byte, selectedID
 	if err := require(caps, "publish"); err != nil {
 		return Publication{}, err
 	}
+	if !slices.Contains(caps.PacketVersions, p.Version) {
+		return Publication{}, failure("unsupported_packet_version", "never")
+	}
 	if !slices.Contains(caps.Operations, "publishScreenshot") || caps.MaxScreenshotBytes <= 0 {
 		return Publication{}, failure("screenshot_unsupported", "never")
 	}

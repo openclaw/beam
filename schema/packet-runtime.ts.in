@@ -1,4 +1,4 @@
-export const BEAM_PACKET_ABI = 2;
+export const BEAM_PACKET_ABI = PACKET_VERSION;
 const MAX_PACKET_BYTES = 56 * 1024;
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -71,5 +71,5 @@ export function parseBeamPacket(bytes: Uint8Array): BeamPacket {
   } catch {
     // JSON.parse error strings may contain transcript text. Keep it out of diagnostics.
   }
-  throw new Error("invalid Beam v2 packet");
+  throw new Error("invalid Beam vPACKET_VERSION packet");
 }
