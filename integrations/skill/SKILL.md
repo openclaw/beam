@@ -33,6 +33,8 @@ Surface the result. A `ready` receipt identifies a native destination session. F
 
 ## Preserve a Codex goal
 
+Earlier transfers lost the saved objective and required the operator to reconstruct it. [Goal transfer incident and fix](https://github.com/openclaw/beam/pull/14).
+
 When the installed CLI advertises packet version 3, a Codex export includes its saved goal separately from transcript messages. Review the objective, source status, and remaining budget. Do not recover a goal by guessing from chat text. Cleaning still redacts paths and secrets in the objective.
 
 A Codex import restores a new paused native goal with fresh usage counters. Give the operator the receipt and `/goal resume` as the explicit next step; opening alone must not activate it. An exhausted source budget stays reference-only until the operator supplies a new budget. The original goal and accounting remain on the source. Other harnesses receive historical goal context. Do not down-convert a goal packet to v1/v2 or send it to a receiver that does not advertise v3.
